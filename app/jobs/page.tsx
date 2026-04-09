@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Briefcase, MapPin, Building2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { GradeBadge } from "@/components/shared/grade-badge";
+import { RemoveJobButton } from "@/components/jobs/remove-job-button";
 import { type Grade } from "@/lib/constants";
 
 export default async function JobsPage() {
@@ -39,19 +40,22 @@ export default async function JobsPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {allJobs.map((job) => (
             <Link key={job.id} href={`/jobs/${job.id}`}>
-              <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
+              <Card className="group hover:bg-accent/50 transition-colors cursor-pointer h-full">
                 <CardContent className="pt-6 space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-sm leading-tight line-clamp-2">
+                    <h3 className="font-semibold text-sm leading-tight line-clamp-2 flex-1">
                       {job.title}
                     </h3>
-                    {job.grade && (
-                      <GradeBadge
-                        grade={job.grade as Grade}
-                        score={job.gradeScore ?? undefined}
-                        size="sm"
-                      />
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {job.grade && (
+                        <GradeBadge
+                          grade={job.grade as Grade}
+                          score={job.gradeScore ?? undefined}
+                          size="sm"
+                        />
+                      )}
+                      <RemoveJobButton jobId={job.id} />
+                    </div>
                   </div>
                   {job.company && (
                     <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
