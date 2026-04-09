@@ -1,5 +1,7 @@
+export const maxDuration = 60;
+
 import { NextResponse } from "next/server";
-import { searchJobs } from "@/lib/services/jsearch";
+import { searchAllSources } from "@/lib/services/job-search";
 import { insertDiscoveredJobs } from "@/lib/actions/discover";
 import { getProfile } from "@/lib/actions/settings";
 
@@ -16,28 +18,41 @@ export async function GET(request: Request) {
     "Revenue Accountant",
   ];
 
-  const allJobs: Awaited<ReturnType<typeof searchJobs>> = [];
+  let totalFetched = 0;
+  const allSources: { name: string; count: number }[] = [];
 
   for (const role of targetRoles) {
     try {
-      const results = await searchJobs({
+      const result = await searchAllSources({
         query: role,
         datePosted: "week",
-        numPages: 1,
+        numPages: 3,
       });
-      allJobs.push(...results);
+
+      if (result.jobs.length > 0) {
+        await insertDiscoveredJobs(result.jobs);
+        totalFetched += result.jobs.length;
+      }
+
+      for (const source of result.sources) {
+        const existing = allSources.find((s) => s.name === source.name);
+        if (existing) {
+          existing.count += source.count;
+        } else {
+          allSources.push({ ...source });
+        }
+      }
     } catch (error) {
       console.error(`Failed to search for "${role}":`, error);
     }
   }
 
-  if (allJobs.length > 0) {
-    await insertDiscoveredJobs(allJobs);
-  }
+  console.log(`Cron fetch complete: ${totalFetched} jobs from ${allSources.length} sources`);
 
   return NextResponse.json({
     ok: true,
-    fetched: allJobs.length,
+    fetched: totalFetched,
     roles: targetRoles,
+    sources: allSources,
   });
 }

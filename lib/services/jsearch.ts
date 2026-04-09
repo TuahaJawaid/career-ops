@@ -40,7 +40,7 @@ export async function searchJobs(params: {
   const searchParams = new URLSearchParams({
     query: params.query,
     page: String(params.page ?? 1),
-    num_pages: String(params.numPages ?? 1),
+    num_pages: String(params.numPages ?? 5),
     date_posted: params.datePosted ?? "week",
   });
 

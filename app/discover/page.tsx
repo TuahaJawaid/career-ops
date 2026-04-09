@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useMemo, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,9 @@ import {
   Globe,
   Plus,
   Trash2,
+  Clock,
+  Search,
+  SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,6 +43,7 @@ import {
   seedDefaultCareerPages,
 } from "@/lib/actions/discover";
 import { EmptyState } from "@/components/shared/empty-state";
+import { formatDistanceToNow } from "date-fns";
 
 type DiscoveredJob = Awaited<ReturnType<typeof getDiscoveredJobs>>[number];
 type CareerPage = Awaited<ReturnType<typeof getCareerPages>>[number];
@@ -54,6 +58,8 @@ const REGIONS = [
   { value: "de", label: "Germany" },
   { value: "sg", label: "Singapore" },
   { value: "in", label: "India" },
+  { value: "fr", label: "France" },
+  { value: "nl", label: "Netherlands" },
 ];
 
 const DATE_OPTIONS = [
@@ -72,6 +78,12 @@ const EMPLOYMENT_TYPES = [
   { value: "INTERN", label: "Internship" },
 ];
 
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest First" },
+  { value: "oldest", label: "Oldest First" },
+  { value: "company", label: "Company A-Z" },
+];
+
 export default function DiscoverPage() {
   const [jobs, setJobs] = useState<DiscoveredJob[]>([]);
   const [careerPages, setCareerPages] = useState<CareerPage[]>([]);
@@ -79,13 +91,24 @@ export default function DiscoverPage() {
   const [searching, setSearching] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Search params
+  // Search params (sent to API)
   const [query, setQuery] = useState("Senior Accountant");
   const [region, setRegion] = useState("all");
   const [datePosted, setDatePosted] = useState("week");
   const [employmentType, setEmploymentType] = useState("all");
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
+
+  // Source stats from last search
+  const [sourceCounts, setSourceCounts] = useState<{ name: string; count: number }[]>([]);
+
+  // Client-side result filters (instant, no API call)
+  const [locationFilter, setLocationFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [hasSalaryFilter, setHasSalaryFilter] = useState(false);
+  const [sortBy, setSortBy] = useState("newest");
+  const [showResultFilters, setShowResultFilters] = useState(false);
 
   // Add career page dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -104,6 +127,52 @@ export default function DiscoverPage() {
     });
   }, []);
 
+  // Get unique sources from current results
+  const availableSources = useMemo(() => {
+    const sources = new Set(jobs.map((j) => j.source).filter(Boolean));
+    return Array.from(sources) as string[];
+  }, [jobs]);
+
+  // Client-side filtered + sorted results
+  const filteredJobs = useMemo(() => {
+    let result = [...jobs];
+
+    // Location text filter
+    if (locationFilter.trim()) {
+      const lf = locationFilter.toLowerCase();
+      result = result.filter((j) =>
+        j.location?.toLowerCase().includes(lf) ||
+        j.company?.toLowerCase().includes(lf)
+      );
+    }
+
+    // Source filter
+    if (sourceFilter !== "all") {
+      result = result.filter((j) => j.source === sourceFilter);
+    }
+
+    // Location type filter
+    if (typeFilter !== "all") {
+      result = result.filter((j) => j.locationType === typeFilter);
+    }
+
+    // Has salary filter
+    if (hasSalaryFilter) {
+      result = result.filter((j) => j.salary);
+    }
+
+    // Sort
+    if (sortBy === "newest") {
+      result.sort((a, b) => new Date(b.discoveredAt).getTime() - new Date(a.discoveredAt).getTime());
+    } else if (sortBy === "oldest") {
+      result.sort((a, b) => new Date(a.discoveredAt).getTime() - new Date(b.discoveredAt).getTime());
+    } else if (sortBy === "company") {
+      result.sort((a, b) => (a.company ?? "").localeCompare(b.company ?? ""));
+    }
+
+    return result;
+  }, [jobs, locationFilter, sourceFilter, typeFilter, hasSalaryFilter, sortBy]);
+
   async function handleSearch() {
     setSearching(true);
     try {
@@ -120,7 +189,8 @@ export default function DiscoverPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`Found ${data.count} new jobs`);
+        toast.success(`Found ${data.count} jobs from ${data.sources?.length ?? 0} sources`);
+        setSourceCounts(data.sources ?? []);
         const updated = await getDiscoveredJobs();
         setJobs(updated);
       } else {
@@ -178,7 +248,6 @@ export default function DiscoverPage() {
 
   if (!loaded) return null;
 
-  // Group career pages by category
   const careerPagesByCategory = careerPages.reduce<Record<string, CareerPage[]>>(
     (acc, page) => {
       const cat = page.category || "Other";
@@ -189,16 +258,23 @@ export default function DiscoverPage() {
     {}
   );
 
+  const sourceLabels: Record<string, string> = {
+    jsearch: "LinkedIn / Indeed / Glassdoor",
+    remotive: "Remotive (Remote)",
+    arbeitnow: "Arbeitnow (EU)",
+    adzuna: "Adzuna (Global)",
+  };
+
   return (
     <div className="space-y-6">
-      {/* Search + Filters */}
+      {/* Search + API Filters */}
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="flex gap-3">
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search for roles..."
+              placeholder="Search for roles (e.g. Senior Accountant, Revenue Accountant)..."
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               className="flex-1"
             />
@@ -206,13 +282,13 @@ export default function DiscoverPage() {
               variant="outline"
               size="icon"
               onClick={() => setShowFilters(!showFilters)}
-              title="Toggle filters"
+              title="Toggle search filters"
             >
               <Filter className="h-4 w-4" />
             </Button>
             <Button onClick={handleSearch} disabled={searching} className="gap-2">
               <RefreshCw className={`h-4 w-4 ${searching ? "animate-spin" : ""}`} />
-              {searching ? "Searching..." : "Search"}
+              {searching ? "Searching..." : "Search All Sources"}
             </Button>
           </div>
 
@@ -221,101 +297,220 @@ export default function DiscoverPage() {
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Region</Label>
                 <Select value={region} onValueChange={(v) => setRegion(v ?? "all")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {REGIONS.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Date Posted</Label>
                 <Select value={datePosted} onValueChange={(v) => setDatePosted(v ?? "week")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {DATE_OPTIONS.map((d) => (
-                      <SelectItem key={d.value} value={d.value}>
-                        {d.label}
-                      </SelectItem>
+                      <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Employment Type</Label>
                 <Select value={employmentType} onValueChange={(v) => setEmploymentType(v ?? "all")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {EMPLOYMENT_TYPES.map((e) => (
-                      <SelectItem key={e.value} value={e.value}>
-                        {e.label}
-                      </SelectItem>
+                      <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Remote Only</Label>
                 <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background">
-                  <Switch
-                    checked={remoteOnly}
-                    onCheckedChange={setRemoteOnly}
-                  />
+                  <Switch checked={remoteOnly} onCheckedChange={setRemoteOnly} />
                   <span className="text-sm">{remoteOnly ? "Yes" : "No"}</span>
                 </div>
               </div>
             </div>
           )}
 
+          {/* Source indicators */}
+          {sourceCounts.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {sourceCounts.map((s) => (
+                <Badge key={s.name} variant="outline" className="text-xs gap-1">
+                  {sourceLabels[s.name] || s.name}: {s.count}
+                </Badge>
+              ))}
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground">
-            Searches LinkedIn, Indeed, Glassdoor, and more globally. Jobs also auto-fetch daily.
+            Searches LinkedIn, Indeed, Glassdoor, ZipRecruiter, Remotive, Arbeitnow{isAdzunaActive() ? ", Adzuna" : ""} and more.
+            Jobs auto-fetch daily at 8 AM UTC.
           </p>
         </CardContent>
       </Card>
 
+      {/* Client-side Result Filters */}
+      {jobs.length > 0 && (
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center justify-between mb-3">
+              <button
+                onClick={() => setShowResultFilters(!showResultFilters)}
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Filter Results ({filteredJobs.length} of {jobs.length})
+              </button>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v ?? "newest")}>
+                <SelectTrigger className="w-40 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {showResultFilters && (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Location / Company</Label>
+                  <Input
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    placeholder="Type to filter..."
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Source</Label>
+                  <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v ?? "all")}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sources</SelectItem>
+                      {availableSources.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {sourceLabels[s] || s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Work Type</Label>
+                  <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? "all")}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="remote">Remote</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                      <SelectItem value="onsite">Onsite</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Salary</Label>
+                  <div className="flex items-center gap-2 h-8 px-2 rounded-md border border-input bg-background">
+                    <Switch
+                      checked={hasSalaryFilter}
+                      onCheckedChange={setHasSalaryFilter}
+                    />
+                    <span className="text-xs">{hasSalaryFilter ? "With salary" : "Any"}</span>
+                  </div>
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-8"
+                    onClick={() => {
+                      setLocationFilter("");
+                      setSourceFilter("all");
+                      setTypeFilter("all");
+                      setHasSalaryFilter(false);
+                      setSortBy("newest");
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Job Results */}
-      {jobs.length === 0 ? (
+      {filteredJobs.length === 0 && jobs.length === 0 ? (
         <EmptyState
           icon={Compass}
           title="No discovered jobs"
           description="Search for jobs above or wait for the daily auto-fetch."
         />
+      ) : filteredJobs.length === 0 ? (
+        <EmptyState
+          icon={Search}
+          title="No matching jobs"
+          description="Try adjusting your filters to see more results."
+        >
+          <Button
+            variant="outline"
+            onClick={() => {
+              setLocationFilter("");
+              setSourceFilter("all");
+              setTypeFilter("all");
+              setHasSalaryFilter(false);
+            }}
+          >
+            Clear Filters
+          </Button>
+        </EmptyState>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">{jobs.length} jobs discovered</p>
-          {jobs.map((job) => (
+          {filteredJobs.map((job) => (
             <Card key={job.id}>
-              <CardContent className="pt-6">
+              <CardContent className="pt-5 pb-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-sm">{job.title}</h3>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
                       {job.company && (
                         <span className="flex items-center gap-1">
-                          <Building2 className="h-3.5 w-3.5" /> {job.company}
+                          <Building2 className="h-3.5 w-3.5 shrink-0" /> {job.company}
                         </span>
                       )}
                       {job.location && (
                         <span className="flex items-center gap-1">
-                          <MapPin className="h-3.5 w-3.5" /> {job.location}
+                          <MapPin className="h-3.5 w-3.5 shrink-0" /> {job.location}
+                        </span>
+                      )}
+                      {job.postedDate && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5 shrink-0" />
+                          {(() => {
+                            try {
+                              return formatDistanceToNow(new Date(job.postedDate), { addSuffix: true });
+                            } catch {
+                              return job.postedDate;
+                            }
+                          })()}
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-2 mt-2 flex-wrap">
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
                       {job.locationType && (
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge
+                          variant={job.locationType === "remote" ? "default" : "outline"}
+                          className="text-[10px]"
+                        >
                           {job.locationType}
                         </Badge>
                       )}
@@ -326,7 +521,7 @@ export default function DiscoverPage() {
                       )}
                       {job.source && (
                         <Badge variant="outline" className="text-[10px]">
-                          {job.source}
+                          {sourceLabels[job.source] || job.source}
                         </Badge>
                       )}
                     </div>
@@ -334,7 +529,7 @@ export default function DiscoverPage() {
                   <div className="flex gap-1 shrink-0">
                     {job.url && (
                       <a href={job.url} target="_blank" rel="noopener noreferrer">
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" title="Open listing">
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                       </a>
@@ -375,7 +570,7 @@ export default function DiscoverPage() {
               Company Career Pages
             </h2>
             <p className="text-xs text-muted-foreground mt-1">
-              Browse career pages directly — find jobs not listed on job boards
+              Browse career pages directly — find jobs not listed on aggregators
             </p>
           </div>
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
@@ -389,27 +584,15 @@ export default function DiscoverPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Company Name</Label>
-                  <Input
-                    value={newCompany}
-                    onChange={(e) => setNewCompany(e.target.value)}
-                    placeholder="e.g. Stripe"
-                  />
+                  <Input value={newCompany} onChange={(e) => setNewCompany(e.target.value)} placeholder="e.g. Stripe" />
                 </div>
                 <div className="space-y-2">
                   <Label>Career Page URL</Label>
-                  <Input
-                    value={newUrl}
-                    onChange={(e) => setNewUrl(e.target.value)}
-                    placeholder="https://stripe.com/jobs"
-                  />
+                  <Input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://stripe.com/jobs" />
                 </div>
                 <div className="space-y-2">
                   <Label>Category (optional)</Label>
-                  <Input
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    placeholder="e.g. Fintech"
-                  />
+                  <Input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="e.g. Fintech" />
                 </div>
                 <Button onClick={handleAddCareerPage} disabled={isPending}>
                   {isPending ? "Adding..." : "Add"}
@@ -421,24 +604,15 @@ export default function DiscoverPage() {
 
         {Object.entries(careerPagesByCategory).map(([category, pages]) => (
           <div key={category}>
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              {category}
-            </h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">{category}</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               {pages.map((page) => (
                 <div
                   key={page.id}
                   className="group relative flex items-center gap-2 rounded-lg border border-border p-3 hover:bg-accent/50 transition-colors"
                 >
-                  <a
-                    href={page.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 min-w-0"
-                  >
-                    <span className="text-sm font-medium truncate block">
-                      {page.company}
-                    </span>
+                  <a href={page.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
+                    <span className="text-sm font-medium truncate block">{page.company}</span>
                   </a>
                   <div className="flex gap-1 shrink-0">
                     <a href={page.url} target="_blank" rel="noopener noreferrer">
@@ -466,4 +640,9 @@ export default function DiscoverPage() {
       </div>
     </div>
   );
+}
+
+// Helper to check if Adzuna is in source counts (for display only)
+function isAdzunaActive() {
+  return !!(typeof window === "undefined" && process.env.ADZUNA_APP_ID);
 }

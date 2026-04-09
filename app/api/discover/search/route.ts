@@ -1,5 +1,7 @@
+export const maxDuration = 60;
+
 import { NextResponse } from "next/server";
-import { searchJobs } from "@/lib/services/jsearch";
+import { searchAllSources } from "@/lib/services/job-search";
 import { insertDiscoveredJobs } from "@/lib/actions/discover";
 import { validateInternalRequest } from "@/lib/api-auth";
 
@@ -16,7 +18,7 @@ export async function POST(request: Request) {
   const employmentTypes = typeof body?.employmentTypes === "string" && body.employmentTypes !== "all" ? body.employmentTypes : undefined;
 
   try {
-    const results = await searchJobs({
+    const result = await searchAllSources({
       query,
       country,
       remoteOnly,
@@ -24,11 +26,15 @@ export async function POST(request: Request) {
       employmentTypes,
     });
 
-    if (results.length > 0) {
-      await insertDiscoveredJobs(results);
+    if (result.jobs.length > 0) {
+      await insertDiscoveredJobs(result.jobs);
     }
 
-    return NextResponse.json({ ok: true, count: results.length });
+    return NextResponse.json({
+      ok: true,
+      count: result.total,
+      sources: result.sources,
+    });
   } catch (error) {
     console.error("Search failed:", error);
     return NextResponse.json(
