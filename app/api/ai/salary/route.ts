@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
   const { output } = await generateText({
-    model: "anthropic/claude-sonnet-4.6",
+    model: "anthropic/claude-haiku-4.5",
     output: Output.object({ schema: salarySchema }),
     prompt: `Estimate the salary range for this job posting based on the role, location, seniority, and industry. Use current 2026 market data.
 

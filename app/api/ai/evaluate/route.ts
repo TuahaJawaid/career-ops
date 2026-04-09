@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     await logAiGeneration({
       type: "evaluation",
       jobId,
-      model: "anthropic/claude-sonnet-4.6",
+      model: "anthropic/claude-haiku-4.5",
       input: { jobTitle: job.title, company: job.company },
       output: evaluation,
       promptTokens: usage?.inputTokens ?? undefined,

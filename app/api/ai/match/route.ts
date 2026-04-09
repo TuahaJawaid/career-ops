@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   const resume = baseResumes[0]?.content ?? "";
 
   const { output } = await generateText({
-    model: "anthropic/claude-sonnet-4.6",
+    model: "anthropic/claude-haiku-4.5",
     output: Output.object({ schema: matchSchema }),
     prompt: `Compare this resume against this job description. Calculate a match score (0-100%) based on keyword overlap, skills alignment, and experience relevance.
 

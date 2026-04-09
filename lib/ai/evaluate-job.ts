@@ -31,7 +31,7 @@ export async function evaluateJob(params: {
   const startTime = Date.now();
 
   const { output, usage } = await generateText({
-    model: "anthropic/claude-sonnet-4.6",
+    model: "anthropic/claude-haiku-4.5",
     output: Output.object({ schema: evaluationSchema }),
     prompt: buildEvaluationPrompt(params),
   });
