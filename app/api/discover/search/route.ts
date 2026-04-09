@@ -10,9 +10,10 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const query = typeof body?.query === "string" ? body.query.slice(0, 200) : "Senior Accountant";
-  const country = typeof body?.country === "string" ? body.country.slice(0, 10) : undefined;
+  const country = typeof body?.country === "string" && body.country !== "all" ? body.country.slice(0, 10) : undefined;
   const remoteOnly = body?.remoteOnly === true;
   const datePosted = typeof body?.datePosted === "string" ? body.datePosted : "week";
+  const employmentTypes = typeof body?.employmentTypes === "string" && body.employmentTypes !== "all" ? body.employmentTypes : undefined;
 
   try {
     const results = await searchJobs({
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
       country,
       remoteOnly,
       datePosted: datePosted as "all" | "today" | "3days" | "week" | "month",
+      employmentTypes,
     });
 
     if (results.length > 0) {
