@@ -7,6 +7,7 @@ import { searchJobs as searchJSearch } from "./jsearch";
 import { searchRemotiveJobs } from "./remotive";
 import { searchArbeitnowJobs } from "./arbeitnow";
 import { searchAdzunaJobs, isAdzunaConfigured } from "./adzuna";
+import { searchWeWorkRemotelyJobs } from "./weworkremotely";
 
 export interface NormalizedJob {
   externalId?: string;
@@ -82,7 +83,17 @@ export async function searchAllSources(params: SearchParams): Promise<SearchResu
       })
   );
 
-  // 4. Adzuna (optional — needs API key)
+  // 4. WeWorkRemotely (free, no auth — RSS feed)
+  promises.push(
+    searchWeWorkRemotelyJobs({ query: params.query })
+      .then((jobs) => ({ name: "weworkremotely", jobs }))
+      .catch((err) => {
+        console.error("WeWorkRemotely failed:", err);
+        return { name: "weworkremotely", jobs: [] as NormalizedJob[] };
+      })
+  );
+
+  // 5. Adzuna (optional — needs API key)
   if (isAdzunaConfigured()) {
     promises.push(
       searchAdzunaJobs({

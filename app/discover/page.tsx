@@ -260,9 +260,10 @@ export default function DiscoverPage() {
 
   const sourceLabels: Record<string, string> = {
     jsearch: "LinkedIn / Indeed / Glassdoor",
-    remotive: "Remotive (Remote)",
+    remotive: "Remotive",
     arbeitnow: "Arbeitnow (EU)",
     adzuna: "Adzuna (Global)",
+    weworkremotely: "WeWorkRemotely",
   };
 
   return (
@@ -349,7 +350,7 @@ export default function DiscoverPage() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            Searches LinkedIn, Indeed, Glassdoor, ZipRecruiter, Remotive, Arbeitnow{isAdzunaActive() ? ", Adzuna" : ""} and more.
+            Searches LinkedIn, Indeed, Glassdoor, ZipRecruiter, Remotive, WeWorkRemotely, Arbeitnow{isAdzunaActive() ? ", Adzuna" : ""} and more.
             Jobs auto-fetch daily at 8 AM UTC.
           </p>
         </CardContent>
