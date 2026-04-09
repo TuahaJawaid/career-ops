@@ -117,35 +117,155 @@ export async function removeCareerPage(id: string) {
   revalidatePath("/discover");
 }
 
+const SEED_VERSION = 2; // Bump this to re-seed with updated list
+
 export async function seedDefaultCareerPages() {
   const db = getDb();
-  const existing = await db.select().from(companyCareerPages).limit(1);
-  if (existing.length > 0) return; // Already seeded
+
+  // Check if we need to re-seed (version check via count)
+  const existing = await db.select().from(companyCareerPages).where(eq(companyCareerPages.isCustom, false));
+  if (existing.length >= 100) return; // v2 has 100+ entries, skip if already seeded
+
+  // Delete old defaults (keep custom user-added ones)
+  if (existing.length > 0) {
+    await db.delete(companyCareerPages).where(eq(companyCareerPages.isCustom, false));
+  }
 
   const defaults = [
-    // Big 4
-    { company: "Deloitte", url: "https://apply.deloitte.com/careers/SearchJobs/?524=12646&524_format=1482&listFilterMode=1", category: "Big 4" },
-    { company: "PwC", url: "https://www.pwc.com/gx/en/careers.html", category: "Big 4" },
-    { company: "EY", url: "https://careers.ey.com/ey/search/?q=accountant", category: "Big 4" },
-    { company: "KPMG", url: "https://www.kpmgcareers.com/jobs/?k=accountant", category: "Big 4" },
-    // Tech
-    { company: "Google", url: "https://www.google.com/about/careers/applications/jobs/results/?q=accountant", category: "Tech" },
-    { company: "Amazon", url: "https://www.amazon.jobs/en/search?base_query=accountant", category: "Tech" },
-    { company: "Microsoft", url: "https://careers.microsoft.com/v2/global/en/search?q=accountant", category: "Tech" },
-    { company: "Apple", url: "https://jobs.apple.com/en-us/search?search=accountant", category: "Tech" },
-    { company: "Meta", url: "https://www.metacareers.com/jobs/?q=accountant", category: "Tech" },
-    // Finance
-    { company: "JPMorgan Chase", url: "https://careers.jpmorgan.com/us/en/search-results?keywords=accountant", category: "Finance" },
-    { company: "Goldman Sachs", url: "https://higher.gs.com/roles/search?q=accountant", category: "Finance" },
-    { company: "Morgan Stanley", url: "https://ms.taleo.net/careersection/2/jobsearch.ftl?lang=en&keyword=accountant", category: "Finance" },
-    { company: "Citi", url: "https://jobs.citi.com/search-jobs/accountant", category: "Finance" },
-    { company: "Bank of America", url: "https://careers.bankofamerica.com/en-us/search-results?keywords=accountant", category: "Finance" },
-    // Consumer / Industrial
-    { company: "Johnson & Johnson", url: "https://jobs.jnj.com/en/jobs/?q=accountant", category: "Consumer" },
-    { company: "Procter & Gamble", url: "https://www.pgcareers.com/search-jobs?k=accountant", category: "Consumer" },
-    { company: "Unilever", url: "https://careers.unilever.com/search-jobs?k=accountant", category: "Consumer" },
-    { company: "Tesla", url: "https://www.tesla.com/careers/search/?query=accountant", category: "Consumer" },
-    { company: "Netflix", url: "https://jobs.netflix.com/search?q=accountant", category: "Tech" },
+    // === Big 4 / Accounting Firms ===
+    { company: "Deloitte", url: "https://apply.deloitte.com/careers/SearchJobs/?524=12646&524_format=1482&listFilterMode=1", category: "Big 4 & Accounting" },
+    { company: "PwC", url: "https://www.pwc.com/gx/en/careers.html", category: "Big 4 & Accounting" },
+    { company: "EY", url: "https://careers.ey.com/ey/search/?q=accountant", category: "Big 4 & Accounting" },
+    { company: "KPMG", url: "https://www.kpmgcareers.com/jobs/?k=accountant", category: "Big 4 & Accounting" },
+    { company: "BDO", url: "https://www.bdo.com/careers/experienced-professionals", category: "Big 4 & Accounting" },
+    { company: "Grant Thornton", url: "https://www.grantthornton.com/careers", category: "Big 4 & Accounting" },
+    { company: "RSM", url: "https://rsmus.com/careers.html", category: "Big 4 & Accounting" },
+    { company: "Crowe", url: "https://www.crowe.com/careers", category: "Big 4 & Accounting" },
+    { company: "Baker Tilly", url: "https://careers.bakertilly.com/jobs", category: "Big 4 & Accounting" },
+    { company: "Mazars", url: "https://www.mazars.com/Home/Join-us", category: "Big 4 & Accounting" },
+
+    // === Tech — USA ===
+    { company: "Google", url: "https://www.google.com/about/careers/applications/jobs/results/?q=accountant", category: "Tech (USA)" },
+    { company: "Amazon", url: "https://www.amazon.jobs/en/search?base_query=accountant", category: "Tech (USA)" },
+    { company: "Microsoft", url: "https://careers.microsoft.com/v2/global/en/search?q=accountant", category: "Tech (USA)" },
+    { company: "Apple", url: "https://jobs.apple.com/en-us/search?search=accountant", category: "Tech (USA)" },
+    { company: "Meta", url: "https://www.metacareers.com/jobs/?q=accountant", category: "Tech (USA)" },
+    { company: "Netflix", url: "https://jobs.netflix.com/search?q=accountant", category: "Tech (USA)" },
+    { company: "Salesforce", url: "https://careers.salesforce.com/en/jobs/?search=accountant", category: "Tech (USA)" },
+    { company: "Adobe", url: "https://careers.adobe.com/us/en/search-results?keywords=accountant", category: "Tech (USA)" },
+    { company: "Oracle", url: "https://careers.oracle.com/jobs/#en/sites/jobsearch/requisitions?keyword=accountant", category: "Tech (USA)" },
+    { company: "Uber", url: "https://www.uber.com/us/en/careers/list/?query=accountant", category: "Tech (USA)" },
+    { company: "Airbnb", url: "https://careers.airbnb.com/?query=accountant", category: "Tech (USA)" },
+    { company: "Stripe", url: "https://stripe.com/jobs/search?query=accountant", category: "Tech (USA)" },
+    { company: "PayPal", url: "https://paypal.eightfold.ai/careers?query=accountant", category: "Tech (USA)" },
+    { company: "Nvidia", url: "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite?q=accountant", category: "Tech (USA)" },
+    { company: "Tesla", url: "https://www.tesla.com/careers/search/?query=accountant", category: "Tech (USA)" },
+    { company: "Intuit", url: "https://jobs.intuit.com/search-jobs/accountant", category: "Tech (USA)" },
+    { company: "ServiceNow", url: "https://careers.servicenow.com/jobs/search?q=accountant", category: "Tech (USA)" },
+    { company: "Shopify", url: "https://www.shopify.com/careers/search?query=accountant", category: "Tech (USA)" },
+
+    // === Finance & Banking — USA ===
+    { company: "JPMorgan Chase", url: "https://careers.jpmorgan.com/us/en/search-results?keywords=accountant", category: "Finance (USA)" },
+    { company: "Goldman Sachs", url: "https://higher.gs.com/roles/search?q=accountant", category: "Finance (USA)" },
+    { company: "Morgan Stanley", url: "https://ms.taleo.net/careersection/2/jobsearch.ftl?lang=en&keyword=accountant", category: "Finance (USA)" },
+    { company: "Citi", url: "https://jobs.citi.com/search-jobs/accountant", category: "Finance (USA)" },
+    { company: "Bank of America", url: "https://careers.bankofamerica.com/en-us/search-results?keywords=accountant", category: "Finance (USA)" },
+    { company: "Wells Fargo", url: "https://www.wellsfargojobs.com/en/jobs/?search=accountant", category: "Finance (USA)" },
+    { company: "American Express", url: "https://aexp.eightfold.ai/careers?query=accountant", category: "Finance (USA)" },
+    { company: "Charles Schwab", url: "https://www.aboutschwab.com/careers/search-results?keyword=accountant", category: "Finance (USA)" },
+    { company: "Visa", url: "https://corporate.visa.com/en/careers.html", category: "Finance (USA)" },
+    { company: "Mastercard", url: "https://careers.mastercard.com/us/en/search-results?keywords=accountant", category: "Finance (USA)" },
+    { company: "BlackRock", url: "https://careers.blackrock.com/job-search-results/?keyword=accountant", category: "Finance (USA)" },
+    { company: "Fidelity", url: "https://jobs.fidelity.com/search-jobs/accountant", category: "Finance (USA)" },
+
+    // === Finance & Banking — UK ===
+    { company: "HSBC", url: "https://mycareer.hsbc.com/en_GB/external/SearchJobs/?q=accountant", category: "Finance (UK)" },
+    { company: "Barclays", url: "https://search.jobs.barclays/search-jobs/accountant", category: "Finance (UK)" },
+    { company: "Lloyds Banking Group", url: "https://www.lloydsbankinggrouptalent.com/search/?q=accountant", category: "Finance (UK)" },
+    { company: "Standard Chartered", url: "https://scb.taleo.net/careersection/ex/jobsearch.ftl?lang=en&keyword=accountant", category: "Finance (UK)" },
+    { company: "NatWest Group", url: "https://jobs.natwestgroup.com/search/?q=accountant", category: "Finance (UK)" },
+    { company: "Revolut", url: "https://www.revolut.com/careers/?query=accountant", category: "Finance (UK)" },
+
+    // === UK Companies ===
+    { company: "Unilever", url: "https://careers.unilever.com/search-jobs?k=accountant", category: "UK & Europe" },
+    { company: "BP", url: "https://www.bp.com/en/global/corporate/careers/search-and-apply.html", category: "UK & Europe" },
+    { company: "Shell", url: "https://www.shell.com/careers/browse-jobs.html?q=accountant", category: "UK & Europe" },
+    { company: "GSK", url: "https://jobs.gsk.com/en-gb/jobs?keywords=accountant", category: "UK & Europe" },
+    { company: "AstraZeneca", url: "https://careers.astrazeneca.com/search-jobs?k=accountant", category: "UK & Europe" },
+    { company: "Rolls-Royce", url: "https://careers.rolls-royce.com/search-jobs?k=accountant", category: "UK & Europe" },
+    { company: "BBC", url: "https://careerssearch.bbc.co.uk/jobs/search?q=accountant", category: "UK & Europe" },
+    { company: "Tesco", url: "https://www.tesco-careers.com/search/?q=accountant", category: "UK & Europe" },
+
+    // === Europe ===
+    { company: "Siemens", url: "https://jobs.siemens.com/careers?query=accountant", category: "UK & Europe" },
+    { company: "SAP", url: "https://jobs.sap.com/search/?q=accountant", category: "UK & Europe" },
+    { company: "Nestlé", url: "https://www.nestle.com/jobs/search?query=accountant", category: "UK & Europe" },
+    { company: "Novartis", url: "https://www.novartis.com/careers/career-search?search_api_fulltext=accountant", category: "UK & Europe" },
+    { company: "Roche", url: "https://careers.roche.com/global/en/search-results?keywords=accountant", category: "UK & Europe" },
+    { company: "BMW", url: "https://www.bmwgroup.jobs/en.html?keyword=accountant", category: "UK & Europe" },
+    { company: "L'Oréal", url: "https://careers.loreal.com/en_US/jobs?keywords=accountant", category: "UK & Europe" },
+    { company: "Philips", url: "https://www.careers.philips.com/global/en/search-results?keywords=accountant", category: "UK & Europe" },
+    { company: "IKEA", url: "https://about.ikea.com/en/work-with-us/job-opportunities", category: "UK & Europe" },
+    { company: "Spotify", url: "https://www.lifeatspotify.com/jobs?query=accountant", category: "UK & Europe" },
+
+    // === Canada ===
+    { company: "RBC", url: "https://jobs.rbc.com/ca/en/search-results?keywords=accountant", category: "Canada" },
+    { company: "TD Bank", url: "https://jobs.td.com/en/job-search-results/?keyword=accountant", category: "Canada" },
+    { company: "Scotiabank", url: "https://jobs.scotiabank.com/search/?q=accountant", category: "Canada" },
+    { company: "BMO", url: "https://jobs.bmo.com/search?q=accountant", category: "Canada" },
+    { company: "Manulife", url: "https://careers.manulife.com/global/en/search-results?keywords=accountant", category: "Canada" },
+    { company: "Sun Life", url: "https://www.sunlife.com/en/careers/search-jobs/?q=accountant", category: "Canada" },
+    { company: "Telus", url: "https://careers.telus.com/search/?q=accountant", category: "Canada" },
+    { company: "Loblaws", url: "https://myview.wd3.myworkdayjobs.com/loblaw_careers?q=accountant", category: "Canada" },
+
+    // === Middle East (UAE, Saudi, Qatar) ===
+    { company: "Emirates Group", url: "https://www.emiratesgroupcareers.com/search/?q=accountant", category: "Middle East" },
+    { company: "Etihad Airways", url: "https://careers.etihad.com/search/?q=accountant", category: "Middle East" },
+    { company: "ADNOC", url: "https://careers.adnoc.ae/search/?q=accountant", category: "Middle East" },
+    { company: "Emirates NBD", url: "https://www.emiratesnbd.com/en/careers", category: "Middle East" },
+    { company: "Majid Al Futtaim", url: "https://careers.majidalfuttaim.com/search/?q=accountant", category: "Middle East" },
+    { company: "Emaar", url: "https://www.emaar.com/en/careers", category: "Middle East" },
+    { company: "SABIC", url: "https://www.sabic.com/en/careers", category: "Middle East" },
+    { company: "Saudi Aramco", url: "https://www.aramco.com/en/careers/job-search?keyword=accountant", category: "Middle East" },
+    { company: "QatarEnergy", url: "https://careers.qatarenergy.qa/search/?q=accountant", category: "Middle East" },
+    { company: "DP World", url: "https://careers.dpworld.com/search/?q=accountant", category: "Middle East" },
+    { company: "Noon", url: "https://careers.noon.com/en/search/?q=accountant", category: "Middle East" },
+    { company: "Chalhoub Group", url: "https://careers.chalhoubgroup.com/search/?q=accountant", category: "Middle East" },
+    { company: "Al Futtaim Group", url: "https://www.alfuttaim.com/careers/search-jobs?query=accountant", category: "Middle East" },
+    { company: "Aldar Properties", url: "https://www.aldar.com/en/careers", category: "Middle East" },
+
+    // === Singapore & Malaysia ===
+    { company: "DBS Bank", url: "https://www.dbs.com/careers/search.html?keyword=accountant", category: "Singapore & Malaysia" },
+    { company: "OCBC Bank", url: "https://www.ocbc.com/group/careers/search.html?keyword=accountant", category: "Singapore & Malaysia" },
+    { company: "UOB", url: "https://careers.uobgroup.com/search/?q=accountant", category: "Singapore & Malaysia" },
+    { company: "Grab", url: "https://grab.careers/jobs/?search=accountant", category: "Singapore & Malaysia" },
+    { company: "Sea Group (Shopee)", url: "https://career.seagroup.com/search?query=accountant", category: "Singapore & Malaysia" },
+    { company: "Singapore Airlines", url: "https://www.singaporeair.com/en_UK/sg/careers/", category: "Singapore & Malaysia" },
+    { company: "Singtel", url: "https://careers.singtel.com/search/?q=accountant", category: "Singapore & Malaysia" },
+    { company: "Petronas", url: "https://www.petronas.com/careers", category: "Singapore & Malaysia" },
+    { company: "Maybank", url: "https://www.maybank.com/en/career.page", category: "Singapore & Malaysia" },
+    { company: "CIMB", url: "https://www.cimb.com/en/careers.html", category: "Singapore & Malaysia" },
+    { company: "Genting Group", url: "https://career.genting.com/search/?q=accountant", category: "Singapore & Malaysia" },
+    { company: "AirAsia", url: "https://careers.airasia.com/search/?q=accountant", category: "Singapore & Malaysia" },
+
+    // === Consumer / Industrial — Global ===
+    { company: "Johnson & Johnson", url: "https://jobs.jnj.com/en/jobs/?q=accountant", category: "Global Consumer" },
+    { company: "Procter & Gamble", url: "https://www.pgcareers.com/search-jobs?k=accountant", category: "Global Consumer" },
+    { company: "Coca-Cola", url: "https://careers.coca-colacompany.com/search-jobs/accountant", category: "Global Consumer" },
+    { company: "PepsiCo", url: "https://www.pepsicojobs.com/search-jobs/accountant", category: "Global Consumer" },
+    { company: "Nike", url: "https://jobs.nike.com/search?q=accountant", category: "Global Consumer" },
+    { company: "LVMH", url: "https://www.lvmh.com/join-us/our-job-offers/?search=accountant", category: "Global Consumer" },
+    { company: "Disney", url: "https://jobs.disneycareers.com/search-jobs/accountant", category: "Global Consumer" },
+    { company: "3M", url: "https://careers.3m.com/search-jobs/accountant", category: "Global Consumer" },
+    { company: "General Electric", url: "https://jobs.gecareers.com/global/en/search-results?keywords=accountant", category: "Global Consumer" },
+    { company: "Caterpillar", url: "https://careers.caterpillar.com/en/jobs/?q=accountant", category: "Global Consumer" },
+
+    // === Pharma & Healthcare ===
+    { company: "Pfizer", url: "https://www.pfizer.com/about/careers/search-results?keyword=accountant", category: "Healthcare & Pharma" },
+    { company: "Merck", url: "https://jobs.merck.com/search-jobs/accountant", category: "Healthcare & Pharma" },
+    { company: "Abbott", url: "https://www.jobs.abbott/search-jobs/accountant", category: "Healthcare & Pharma" },
+    { company: "Medtronic", url: "https://jobs.medtronic.com/search-jobs/accountant", category: "Healthcare & Pharma" },
+    { company: "UnitedHealth Group", url: "https://careers.unitedhealthgroup.com/search-jobs/accountant", category: "Healthcare & Pharma" },
   ];
 
   await db.insert(companyCareerPages).values(defaults);
