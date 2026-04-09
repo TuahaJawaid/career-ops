@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Briefcase, LayoutDashboard, Send, FileText, Settings, Compass, Sparkles } from "lucide-react";
+import { Menu, Briefcase, LayoutDashboard, Send, FileText, Settings, Compass, Sparkles, Users, BarChart3 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,8 @@ const navItems = [
   { href: "/jobs", label: "Jobs", icon: Briefcase },
   { href: "/applications", label: "Applications", icon: Send },
   { href: "/resumes", label: "Resumes", icon: FileText },
+  { href: "/contacts", label: "Contacts", icon: Users },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

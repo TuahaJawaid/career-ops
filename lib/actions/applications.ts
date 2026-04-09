@@ -1,9 +1,10 @@
 "use server";
 
 import { getDb } from "@/lib/db";
-import { applications, applicationEvents, jobs } from "@/lib/db/schema";
+import { applications, applicationEvents, jobs, reminders } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { addBusinessDays } from "date-fns";
 
 export async function getApplications() {
   const db = getDb();
@@ -114,6 +115,24 @@ export async function updateApplicationStatus(
     toStatus: newStatus,
     note,
   });
+
+  // Auto-create follow-up reminder when moving to "applied"
+  if (newStatus === "applied" && fromStatus !== "applied") {
+    await db.insert(reminders).values({
+      applicationId: id,
+      title: "Follow up on application",
+      dueDate: addBusinessDays(new Date(), 5),
+    });
+  }
+
+  // Auto-create thank-you reminder after interview
+  if (newStatus === "interview" && fromStatus !== "interview") {
+    await db.insert(reminders).values({
+      applicationId: id,
+      title: "Send thank-you email after interview",
+      dueDate: addBusinessDays(new Date(), 1),
+    });
+  }
 
   revalidatePath("/applications");
   revalidatePath(`/applications/${id}`);

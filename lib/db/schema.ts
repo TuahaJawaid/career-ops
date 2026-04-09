@@ -161,6 +161,46 @@ export const companyCareerPages = pgTable("company_career_pages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Feature 1: Follow-up reminders
+export const reminders = pgTable("reminders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  applicationId: uuid("application_id")
+    .references(() => applications.id, { onDelete: "cascade" })
+    .notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  isCompleted: boolean("is_completed").default(false).notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Feature 4: Networking CRM
+export const contacts = pgTable("contacts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  role: varchar("role", { length: 255 }),
+  company: varchar("company", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  linkedin: text("linkedin"),
+  phone: varchar("phone", { length: 50 }),
+  notes: text("notes"),
+  jobId: uuid("job_id").references(() => jobs.id),
+  applicationId: uuid("application_id").references(() => applications.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const contactInteractions = pgTable("contact_interactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  contactId: uuid("contact_id")
+    .references(() => contacts.id, { onDelete: "cascade" })
+    .notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // email, linkedin, call, meeting, referral
+  note: text("note"),
+  date: timestamp("date").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const jobsRelations = relations(jobs, ({ many }) => ({
   applications: many(applications),

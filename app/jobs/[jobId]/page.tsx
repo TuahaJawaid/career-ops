@@ -25,6 +25,8 @@ import {
   Copy,
   Check,
   Download,
+  Target,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getJob, archiveJob } from "@/lib/actions/jobs";
@@ -42,6 +44,12 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [isPending, startTransition] = useTransition();
   const [evaluating, setEvaluating] = useState(false);
+
+  // Match score + salary state
+  const [matchData, setMatchData] = useState<{ matchScore: number; presentKeywords: string[]; missingKeywords: string[]; suggestions: string[]; summary: string } | null>(null);
+  const [salaryData, setSalaryData] = useState<{ estimatedMin: number; estimatedMax: number; currency: string; confidence: string; marketMedian: number; notes: string; factors: string[] } | null>(null);
+  const [loadingMatch, setLoadingMatch] = useState(false);
+  const [loadingSalary, setLoadingSalary] = useState(false);
 
   // Tailoring state
   const [baseResumes, setBaseResumes] = useState<Resume[]>([]);
@@ -103,6 +111,50 @@ export default function JobDetailPage() {
       toast.error("Evaluation failed");
     } finally {
       setEvaluating(false);
+    }
+  }
+
+  async function handleMatchScore() {
+    setLoadingMatch(true);
+    try {
+      const res = await fetch("/api/ai/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job!.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatchData(data.match);
+        toast.success("Match score calculated");
+      } else {
+        toast.error("Match analysis failed");
+      }
+    } catch {
+      toast.error("Match analysis failed");
+    } finally {
+      setLoadingMatch(false);
+    }
+  }
+
+  async function handleSalaryEstimate() {
+    setLoadingSalary(true);
+    try {
+      const res = await fetch("/api/ai/salary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job!.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSalaryData(data.salary);
+        toast.success("Salary estimated");
+      } else {
+        toast.error("Salary estimation failed");
+      }
+    } catch {
+      toast.error("Salary estimation failed");
+    } finally {
+      setLoadingSalary(false);
     }
   }
 
@@ -319,6 +371,8 @@ strong { font-weight: 700; }
           <TabsTrigger value="tailor" className="gap-1">
             <Sparkles className="h-3.5 w-3.5" /> Tailor Resume
           </TabsTrigger>
+          <TabsTrigger value="match">Match Score</TabsTrigger>
+          <TabsTrigger value="salary">Salary</TabsTrigger>
         </TabsList>
 
         <TabsContent value="description" className="mt-4">
@@ -579,6 +633,125 @@ strong { font-weight: 700; }
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* Match Score Tab */}
+        <TabsContent value="match" className="mt-4 space-y-4">
+          <Card className="glass shadow-card border-white/30">
+            <CardContent className="pt-6">
+              {!matchData ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Compare your resume against this job to see how well you match.
+                  </p>
+                  <Button onClick={handleMatchScore} disabled={loadingMatch} className="gap-2">
+                    <Target className="h-4 w-4" />
+                    {loadingMatch ? "Analyzing..." : "Calculate Match Score"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Score display */}
+                  <div className="text-center">
+                    <div className={`text-5xl font-bold ${matchData.matchScore >= 75 ? "text-emerald-600" : matchData.matchScore >= 50 ? "text-amber-600" : "text-red-500"}`}>
+                      {matchData.matchScore}%
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">Resume Match Score</p>
+                    <p className="text-sm mt-2">{matchData.summary}</p>
+                  </div>
+
+                  {/* Keywords */}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-emerald-600 mb-2">Present Keywords ({matchData.presentKeywords.length})</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {matchData.presentKeywords.map((kw) => (
+                          <Badge key={kw} className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">{kw}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-red-500 mb-2">Missing Keywords ({matchData.missingKeywords.length})</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {matchData.missingKeywords.map((kw) => (
+                          <Badge key={kw} className="bg-red-50 text-red-600 border-red-200 text-[10px]">{kw}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Suggestions */}
+                  {matchData.suggestions.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">Suggestions to Improve</p>
+                      <ul className="space-y-1.5 text-sm text-muted-foreground">
+                        {matchData.suggestions.map((s, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-primary mt-0.5">+</span> {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <Button variant="outline" size="sm" onClick={handleMatchScore} disabled={loadingMatch}>
+                    {loadingMatch ? "Recalculating..." : "Recalculate"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Salary Tab */}
+        <TabsContent value="salary" className="mt-4 space-y-4">
+          <Card className="glass shadow-card border-white/30">
+            <CardContent className="pt-6">
+              {!salaryData ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Get an AI-estimated salary range for this role based on title, location, and market data.
+                  </p>
+                  <Button onClick={handleSalaryEstimate} disabled={loadingSalary} className="gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    {loadingSalary ? "Estimating..." : "Estimate Salary"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Estimated Range</p>
+                    <div className="text-3xl font-bold mt-1">
+                      {salaryData.currency} {salaryData.estimatedMin.toLocaleString()} - {salaryData.estimatedMax.toLocaleString()}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Market median: {salaryData.currency} {salaryData.marketMedian.toLocaleString()}
+                    </p>
+                    <Badge variant="outline" className="mt-2">
+                      Confidence: {salaryData.confidence}
+                    </Badge>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">{salaryData.notes}</p>
+
+                  {salaryData.factors.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">Factors</p>
+                      <div className="flex flex-wrap gap-2">
+                        {salaryData.factors.map((f, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">{f}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button variant="outline" size="sm" onClick={handleSalaryEstimate} disabled={loadingSalary}>
+                    {loadingSalary ? "Re-estimating..." : "Re-estimate"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
