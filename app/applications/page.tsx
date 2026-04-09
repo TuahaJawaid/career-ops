@@ -6,6 +6,7 @@ import { Send } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { GradeBadge } from "@/components/shared/grade-badge";
+import { RemoveApplicationButton } from "@/components/applications/remove-application-button";
 import { type ApplicationStatus, type Grade } from "@/lib/constants";
 import { formatDistanceToNow } from "date-fns";
 
@@ -38,6 +39,7 @@ export default async function ApplicationsPage() {
               <TableHead>Status</TableHead>
               <TableHead>Grade</TableHead>
               <TableHead>Added</TableHead>
+              <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -57,6 +59,9 @@ export default async function ApplicationsPage() {
                 </TableCell>
                 <TableCell className="text-muted-foreground text-xs font-mono">
                   {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true })}
+                </TableCell>
+                <TableCell>
+                  <RemoveApplicationButton applicationId={app.id} />
                 </TableCell>
               </TableRow>
             ))}
