@@ -60,10 +60,10 @@ export function Sidebar() {
       </nav>
       <div className="p-4 mx-3 mb-3 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-100">
         <p className="text-xs font-medium text-blue-700">
-          Built for Aimun Naeem
+          Built for ATJ
         </p>
         <p className="text-[10px] text-blue-500 mt-0.5">
-          AI-powered job search
+          With love from TJ
         </p>
       </div>
     </aside>
