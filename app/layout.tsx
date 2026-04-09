@@ -37,12 +37,12 @@ export default function RootLayout({
       <body className="h-full">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <div className="flex h-full">
+            <div className="flex h-full gradient-bg min-h-screen">
               <Sidebar />
               <div className="flex flex-1 flex-col overflow-hidden">
                 <Header />

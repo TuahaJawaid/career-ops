@@ -24,7 +24,7 @@ export default async function ApplicationsPage() {
   }
 
   return (
-    <Card>
+    <Card className="glass shadow-card border-white/30">
       <CardHeader>
         <CardTitle className="text-base">
           {apps.length} application{apps.length !== 1 ? "s" : ""}

@@ -49,6 +49,13 @@ async function getDashboardData() {
   }
 }
 
+const statCards = [
+  { label: "Total Jobs", icon: Briefcase, gradient: "gradient-blue" },
+  { label: "Applications", icon: Send, gradient: "gradient-teal" },
+  { label: "Interviews", icon: Calendar, gradient: "gradient-purple" },
+  { label: "Offers", icon: Trophy, gradient: "gradient-warm" },
+];
+
 export default async function DashboardPage() {
   const { jobCount, allApps, recentEvents, gradeBreakdown } = await getDashboardData();
 
@@ -56,62 +63,44 @@ export default async function DashboardPage() {
   const totalApps = allApps.reduce((sum, a) => sum + a.count, 0);
   const interviews = (statusMap["interview"] ?? 0) + (statusMap["technical"] ?? 0);
   const offers = statusMap["offer"] ?? 0;
+  const values = [jobCount, totalApps, interviews, offers];
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{jobCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Applications</CardTitle>
-            <Send className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalApps}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Interviews</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{interviews}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Offers</CardTitle>
-            <Trophy className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{offers}</div>
-          </CardContent>
-        </Card>
+        {statCards.map((stat, i) => (
+          <Card key={stat.label} className="glass shadow-card border-white/30 overflow-hidden">
+            <CardContent className="pt-6 relative">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  <p className="text-3xl font-bold mt-1">{values[i]}</p>
+                </div>
+                <div className={`h-12 w-12 rounded-xl ${stat.gradient} flex items-center justify-center shadow-card`}>
+                  <stat.icon className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="glass shadow-card border-white/30">
           <CardHeader>
             <CardTitle className="text-base">Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
             {recentEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No activity yet. Start by adding jobs and creating applications.
-              </p>
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">
+                  No activity yet. Start by adding jobs and creating applications.
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {recentEvents.map((event) => (
-                  <div key={event.id} className="flex items-center justify-between text-sm">
+                  <div key={event.id} className="flex items-center justify-between text-sm p-2 rounded-lg hover:bg-white/50 transition-colors">
                     <div className="flex items-center gap-2">
                       <StatusBadge status={event.toStatus as ApplicationStatus} />
                       <span className="text-muted-foreground truncate max-w-48">
@@ -128,24 +117,26 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass shadow-card border-white/30">
           <CardHeader>
             <CardTitle className="text-base">Jobs by Grade</CardTitle>
           </CardHeader>
           <CardContent>
             {gradeBreakdown.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No jobs evaluated yet. Add a job and run AI evaluation.
-              </p>
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">
+                  No jobs evaluated yet. Add a job and run AI evaluation.
+                </p>
+              </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {gradeBreakdown
                   .filter((g) => g.grade)
                   .sort((a, b) => (a.grade ?? "").localeCompare(b.grade ?? ""))
                   .map((g) => (
-                    <div key={g.grade} className="flex items-center justify-between">
-                      <Badge variant="outline">{g.grade}</Badge>
-                      <span className="text-sm font-mono">{g.count}</span>
+                    <div key={g.grade} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/50 transition-colors">
+                      <Badge variant="outline" className="font-bold">{g.grade}</Badge>
+                      <span className="text-sm font-mono font-semibold">{g.count}</span>
                     </div>
                   ))}
               </div>

@@ -9,6 +9,7 @@ import {
   FileText,
   Settings,
   Compass,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,14 +26,18 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card">
-      <div className="flex h-14 items-center border-b border-border px-6">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <Briefcase className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-lg">Career Ops</span>
+    <aside className="hidden md:flex w-64 flex-col glass-subtle border-r border-white/20">
+      <div className="flex h-16 items-center px-6 gap-3">
+        <div className="h-9 w-9 rounded-xl gradient-blue flex items-center justify-center shadow-card">
+          <Sparkles className="h-5 w-5 text-white" />
+        </div>
+        <Link href="/dashboard">
+          <span className="font-bold text-lg bg-gradient-to-r from-[#4F7DF3] to-[#6C63FF] bg-clip-text text-transparent">
+            Career Ops
+          </span>
         </Link>
       </div>
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex-1 space-y-1 px-3 mt-2">
         {navItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
@@ -41,10 +46,10 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
                 isActive
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  ? "gradient-blue text-white shadow-card font-medium"
+                  : "text-muted-foreground hover:bg-white/50 hover:text-foreground"
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -53,9 +58,12 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="border-t border-border p-4">
-        <p className="text-xs text-muted-foreground">
+      <div className="p-4 mx-3 mb-3 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-100">
+        <p className="text-xs font-medium text-blue-700">
           Built for Aimun Naeem
+        </p>
+        <p className="text-[10px] text-blue-500 mt-0.5">
+          AI-powered job search
         </p>
       </div>
     </aside>

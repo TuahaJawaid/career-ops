@@ -40,7 +40,7 @@ export default async function JobsPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {allJobs.map((job) => (
             <Link key={job.id} href={`/jobs/${job.id}`}>
-              <Card className="group hover:bg-accent/50 transition-colors cursor-pointer h-full">
+              <Card className="group glass shadow-card border-white/30 hover:shadow-glass transition-all duration-200 cursor-pointer h-full">
                 <CardContent className="pt-6 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-sm leading-tight line-clamp-2 flex-1">

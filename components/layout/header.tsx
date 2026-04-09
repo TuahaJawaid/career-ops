@@ -20,7 +20,7 @@ export function Header() {
     )?.[1] ?? "Career Ops";
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b border-border bg-card px-6">
+    <header className="flex h-16 items-center gap-4 border-b border-white/20 glass-subtle px-6">
       <MobileNav />
       <h1 className="text-lg font-semibold">{title}</h1>
     </header>

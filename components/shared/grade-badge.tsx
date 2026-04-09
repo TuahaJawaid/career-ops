@@ -9,16 +9,16 @@ interface GradeBadgeProps {
 
 export function GradeBadge({ grade, score, size = "md" }: GradeBadgeProps) {
   const sizeClasses = {
-    sm: "h-6 w-6 text-xs",
-    md: "h-8 w-8 text-sm",
-    lg: "h-12 w-12 text-lg",
+    sm: "h-7 w-7 text-xs",
+    md: "h-9 w-9 text-sm",
+    lg: "h-14 w-14 text-xl",
   };
 
   return (
     <div className="flex items-center gap-2">
       <div
         className={cn(
-          "flex items-center justify-center rounded-md border font-bold",
+          "flex items-center justify-center rounded-xl border-2 font-bold shadow-card",
           GRADE_COLORS[grade],
           sizeClasses[size]
         )}
