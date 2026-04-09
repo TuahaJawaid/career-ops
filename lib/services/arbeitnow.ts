@@ -41,13 +41,21 @@ export async function searchArbeitnowJobs(params: {
 
   const data: ArbeitnowResponse = await response.json();
 
-  // Client-side filter since Arbeitnow doesn't have a search param
-  const queryWords = params.query.toLowerCase().split(/\s+/);
+  // Strict filter: title must contain the full query phrase OR all key words
+  // This prevents "Senior Customer Support" matching "Senior Accountant"
+  const queryLower = params.query.toLowerCase().trim();
+  const keyWords = queryLower
+    .split(/\s+/)
+    .filter((w) => !["senior", "junior", "lead", "staff", "principal", "associate", "manager"].includes(w));
 
   return data.data
     .filter((job) => {
-      const text = `${job.title} ${job.description} ${job.tags.join(" ")}`.toLowerCase();
-      return queryWords.some((word) => text.includes(word));
+      const titleLower = job.title.toLowerCase();
+      // Full phrase match in title
+      if (titleLower.includes(queryLower)) return true;
+      // All key words (excluding generic seniority terms) must appear in title
+      if (keyWords.length > 0 && keyWords.every((word) => titleLower.includes(word))) return true;
+      return false;
     })
     .map(normalizeJob);
 }

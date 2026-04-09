@@ -44,15 +44,18 @@ export async function searchRemotiveJobs(params: {
 
   const data: RemotiveResponse = await response.json();
 
+  // Strict filter: title must contain the full query phrase OR all key words
+  const queryLower = params.query.toLowerCase().trim();
+  const keyWords = queryLower
+    .split(/\s+/)
+    .filter((w) => !["senior", "junior", "lead", "staff", "principal", "associate", "manager"].includes(w));
+
   return data.jobs
     .filter((job) => {
-      // Filter for accounting-relevant jobs
       const titleLower = job.title.toLowerCase();
-      const queryLower = params.query.toLowerCase();
-      const queryWords = queryLower.split(/\s+/);
-      return queryWords.some(
-        (word) => titleLower.includes(word) || job.category.toLowerCase().includes(word)
-      );
+      if (titleLower.includes(queryLower)) return true;
+      if (keyWords.length > 0 && keyWords.every((word) => titleLower.includes(word))) return true;
+      return false;
     })
     .map(normalizeJob);
 }

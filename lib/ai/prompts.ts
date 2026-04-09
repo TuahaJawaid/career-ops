@@ -61,13 +61,36 @@ ${params.jobDescription}
 ${params.baseResume}
 
 ## Instructions
+Produce TWO sections clearly separated:
+
+### SECTION 1: TAILORED RESUME
 1. Reorganize experience bullets to prioritize relevant accounting/finance skills
 2. Naturally incorporate these ATS keywords where truthful: ${params.keywords.join(", ")}
 3. Quantify achievements where possible
 4. Keep the same overall structure but optimize ordering and emphasis
 5. Do NOT fabricate experience or skills
-6. Output the tailored resume in clean markdown format
-7. Add a brief "Tailoring Notes" section at the end explaining key changes made`;
+6. Output in clean, professional markdown format ready for PDF conversion
+7. Use clear section headers: PROFESSIONAL SUMMARY, PROFESSIONAL EXPERIENCE, EDUCATION, SKILLS, CERTIFICATIONS
+
+### SECTION 2: COVER LETTER
+After the resume, write a professional cover letter:
+1. Address to Hiring Manager at ${params.company || "the company"}
+2. Opening paragraph: Express interest in the ${params.jobTitle} role and briefly state qualifications
+3. Body paragraphs: Connect 2-3 specific achievements from the resume to the job requirements
+4. Closing paragraph: Express enthusiasm and call to action
+5. Keep it under 400 words, professional but personable
+6. Do NOT fabricate experience
+
+### SECTION 3: TAILORING NOTES
+Briefly list the key changes made to the resume and why.
+
+Use these exact section dividers:
+---RESUME---
+(resume content)
+---COVER LETTER---
+(cover letter content)
+---TAILORING NOTES---
+(notes content)`;
 }
 
 export function buildAnalysisPrompt(description: string) {

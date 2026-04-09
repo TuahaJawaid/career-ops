@@ -1,20 +1,41 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { Brain, FileText, ExternalLink, Send, Trash2, MapPin, Building2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Brain,
+  FileText,
+  ExternalLink,
+  Send,
+  Trash2,
+  MapPin,
+  Building2,
+  Sparkles,
+  Copy,
+  Check,
+  Download,
+} from "lucide-react";
 import { toast } from "sonner";
 import { getJob, archiveJob } from "@/lib/actions/jobs";
 import { createApplication } from "@/lib/actions/applications";
+import { getBaseResumes } from "@/lib/actions/resumes";
+import { saveTailoredResume } from "@/lib/actions/resumes";
 import { GradeBadge } from "@/components/shared/grade-badge";
 import { type Grade } from "@/lib/constants";
 
 type Job = Awaited<ReturnType<typeof getJob>>;
+type Resume = Awaited<ReturnType<typeof getBaseResumes>>[number];
 
 export default function JobDetailPage() {
   const params = useParams();
@@ -23,9 +44,36 @@ export default function JobDetailPage() {
   const [isPending, startTransition] = useTransition();
   const [evaluating, setEvaluating] = useState(false);
 
+  // Tailoring state
+  const [baseResumes, setBaseResumes] = useState<Resume[]>([]);
+  const [selectedResumeId, setSelectedResumeId] = useState<string>("");
+  const [tailoring, setTailoring] = useState(false);
+  const [tailoredContent, setTailoredContent] = useState("");
+  const [resumeSection, setResumeSection] = useState("");
+  const [coverLetterSection, setCoverLetterSection] = useState("");
+  const [notesSection, setNotesSection] = useState("");
+  const [copiedResume, setCopiedResume] = useState(false);
+  const [copiedCover, setCopiedCover] = useState(false);
+
   useEffect(() => {
-    getJob(params.jobId as string).then(setJob);
+    const id = params.jobId as string;
+    getJob(id).then(setJob);
+    getBaseResumes().then((resumes) => {
+      setBaseResumes(resumes);
+      if (resumes.length > 0) setSelectedResumeId(resumes[0].id);
+    });
   }, [params.jobId]);
+
+  // Parse sections from streamed content
+  const parseSections = useCallback((content: string) => {
+    const resumeMatch = content.match(/---RESUME---([\s\S]*?)(?=---COVER LETTER---|$)/);
+    const coverMatch = content.match(/---COVER LETTER---([\s\S]*?)(?=---TAILORING NOTES---|$)/);
+    const notesMatch = content.match(/---TAILORING NOTES---([\s\S]*?)$/);
+
+    setResumeSection((resumeMatch?.[1] ?? content).trim());
+    setCoverLetterSection((coverMatch?.[1] ?? "").trim());
+    setNotesSection((notesMatch?.[1] ?? "").trim());
+  }, []);
 
   if (!job) return null;
 
@@ -51,6 +99,62 @@ export default function JobDetailPage() {
     }
   }
 
+  async function handleTailor() {
+    if (!selectedResumeId) {
+      toast.error("Please upload a base resume first (go to Resumes tab)");
+      return;
+    }
+    setTailoring(true);
+    setTailoredContent("");
+    setResumeSection("");
+    setCoverLetterSection("");
+    setNotesSection("");
+
+    try {
+      const res = await fetch("/api/ai/tailor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job!.id, baseResumeId: selectedResumeId }),
+      });
+
+      if (!res.ok) {
+        toast.error("Tailoring failed");
+        setTailoring(false);
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          full += chunk;
+          setTailoredContent(full);
+          parseSections(full);
+        }
+      }
+
+      // Save the tailored resume
+      await saveTailoredResume({
+        name: `Tailored for ${job!.title} at ${job!.company ?? "Company"}`,
+        content: full,
+        jobId: job!.id,
+        tailoringNotes: notesSection || undefined,
+        keywordsAdded: (job!.keywords as string[]) ?? [],
+      });
+
+      toast.success("Resume tailored & saved");
+    } catch {
+      toast.error("Tailoring failed");
+    } finally {
+      setTailoring(false);
+    }
+  }
+
   function handleCreateApp() {
     startTransition(async () => {
       await createApplication(job!.id);
@@ -65,6 +169,18 @@ export default function JobDetailPage() {
       toast.success("Job archived");
       router.push("/jobs");
     });
+  }
+
+  function copyToClipboard(text: string, type: "resume" | "cover") {
+    navigator.clipboard.writeText(text);
+    if (type === "resume") {
+      setCopiedResume(true);
+      setTimeout(() => setCopiedResume(false), 2000);
+    } else {
+      setCopiedCover(true);
+      setTimeout(() => setCopiedCover(false), 2000);
+    }
+    toast.success("Copied to clipboard");
   }
 
   const details = job.evaluationDetails as {
@@ -116,7 +232,7 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Button onClick={handleEvaluate} disabled={evaluating} variant="outline" className="gap-2">
           <Brain className="h-4 w-4" />
           {evaluating ? "Evaluating..." : job.grade ? "Re-evaluate" : "AI Evaluate"}
@@ -131,6 +247,9 @@ export default function JobDetailPage() {
           <TabsTrigger value="description">Description</TabsTrigger>
           <TabsTrigger value="evaluation">AI Evaluation</TabsTrigger>
           <TabsTrigger value="keywords">Keywords</TabsTrigger>
+          <TabsTrigger value="tailor" className="gap-1">
+            <Sparkles className="h-3.5 w-3.5" /> Tailor Resume
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="description" className="mt-4">
@@ -237,6 +356,132 @@ export default function JobDetailPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="tailor" className="mt-4 space-y-4">
+          {/* Resume selector + generate button */}
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              {baseResumes.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Upload a base resume first to generate tailored versions.
+                  </p>
+                  <Button variant="outline" onClick={() => router.push("/resumes")}>
+                    Go to Resumes
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1 space-y-1.5">
+                      <label className="text-sm font-medium">Base Resume</label>
+                      <Select
+                        value={selectedResumeId}
+                        onValueChange={(v) => setSelectedResumeId(v ?? "")}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a resume" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {baseResumes.map((r) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      onClick={handleTailor}
+                      disabled={tailoring || !selectedResumeId}
+                      className="gap-2"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      {tailoring ? "Generating..." : "Generate Resume & Cover Letter"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    AI will create a tailored resume optimized for ATS + a personalized cover letter for this role.
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Tailored Resume Output */}
+          {(resumeSection || tailoring) && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Tailored Resume
+                  </CardTitle>
+                  {resumeSection && !tailoring && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => copyToClipboard(resumeSection, "resume")}
+                    >
+                      {copiedResume ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copiedResume ? "Copied" : "Copy"}
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="whitespace-pre-wrap text-sm font-mono bg-muted/50 rounded-lg p-4 max-h-[500px] overflow-y-auto">
+                  {resumeSection || (tailoring ? "Generating tailored resume..." : "")}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Cover Letter Output */}
+          {(coverLetterSection || (tailoring && resumeSection)) && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Cover Letter
+                  </CardTitle>
+                  {coverLetterSection && !tailoring && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => copyToClipboard(coverLetterSection, "cover")}
+                    >
+                      {copiedCover ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copiedCover ? "Copied" : "Copy"}
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="whitespace-pre-wrap text-sm bg-muted/50 rounded-lg p-4 max-h-[400px] overflow-y-auto">
+                  {coverLetterSection || (tailoring ? "Generating cover letter..." : "")}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Tailoring Notes */}
+          {notesSection && !tailoring && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Tailoring Notes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="whitespace-pre-wrap text-sm text-muted-foreground">
+                  {notesSection}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
