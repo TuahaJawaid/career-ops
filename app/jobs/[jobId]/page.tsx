@@ -171,6 +171,61 @@ export default function JobDetailPage() {
     });
   }
 
+  function downloadAsPdf(content: string, title: string) {
+    // Convert markdown-style content to basic HTML for professional PDF
+    const htmlContent = content
+      .replace(/^### (.+)$/gm, '<h3 style="margin:16px 0 8px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2c3e50;border-bottom:2px solid #4F7DF3;padding-bottom:4px;">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 style="margin:20px 0 8px;font-size:16px;font-weight:700;color:#1a1a2e;">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:#1a1a2e;">$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/^[-•] (.+)$/gm, '<li style="margin:3px 0;padding-left:4px;">$1</li>')
+      .replace(/(<li.*<\/li>\n?)+/g, '<ul style="margin:4px 0 12px 16px;padding:0;list-style-type:disc;">$&</ul>')
+      .replace(/\n\n/g, '<br/>')
+      .replace(/\n/g, '<br/>');
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Please allow popups to download PDF");
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+          @page { margin: 0.6in 0.7in; size: letter; }
+          body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #2c2c2c;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+          }
+          h1 { font-size: 22px; margin: 0 0 2px; color: #1a1a2e; }
+          h2 { font-size: 15px; margin: 18px 0 6px; color: #1a1a2e; border-bottom: 1.5px solid #4F7DF3; padding-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+          h3 { font-size: 13px; margin: 14px 0 4px; color: #2c3e50; }
+          ul { margin: 4px 0 10px 16px; padding: 0; }
+          li { margin: 2px 0; }
+          strong { font-weight: 600; }
+          p { margin: 6px 0; }
+          a { color: #4F7DF3; text-decoration: none; }
+        </style>
+      </head>
+      <body>${htmlContent}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  }
+
   function copyToClipboard(text: string, type: "resume" | "cover") {
     navigator.clipboard.writeText(text);
     if (type === "resume") {
@@ -419,15 +474,28 @@ export default function JobDetailPage() {
                     Tailored Resume
                   </CardTitle>
                   {resumeSection && !tailoring && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1"
-                      onClick={() => copyToClipboard(resumeSection, "resume")}
-                    >
-                      {copiedResume ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                      {copiedResume ? "Copied" : "Copy"}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => downloadAsPdf(
+                          resumeSection,
+                          `Resume - ${job!.title} at ${job!.company ?? "Company"}`
+                        )}
+                      >
+                        <Download className="h-3.5 w-3.5" /> Download PDF
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => copyToClipboard(resumeSection, "resume")}
+                      >
+                        {copiedResume ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedResume ? "Copied" : "Copy"}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>
@@ -449,15 +517,28 @@ export default function JobDetailPage() {
                     Cover Letter
                   </CardTitle>
                   {coverLetterSection && !tailoring && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1"
-                      onClick={() => copyToClipboard(coverLetterSection, "cover")}
-                    >
-                      {copiedCover ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                      {copiedCover ? "Copied" : "Copy"}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => downloadAsPdf(
+                          coverLetterSection,
+                          `Cover Letter - ${job!.title} at ${job!.company ?? "Company"}`
+                        )}
+                      >
+                        <Download className="h-3.5 w-3.5" /> Download PDF
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => copyToClipboard(coverLetterSection, "cover")}
+                      >
+                        {copiedCover ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedCover ? "Copied" : "Copy"}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>
