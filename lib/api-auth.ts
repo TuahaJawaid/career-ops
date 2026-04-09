@@ -22,8 +22,9 @@ export async function validateInternalRequest(): Promise<boolean> {
   const allowedOrigins = new Set<string>();
   if (vercelUrl) allowedOrigins.add(`https://${vercelUrl}`);
   if (vercelProjectUrl) allowedOrigins.add(`https://${vercelProjectUrl}`);
-  // Also allow the .vercel.app alias
-  allowedOrigins.add("https://career-ops-blush.vercel.app");
+  // Also allow custom domain if configured
+  const customDomain = process.env.NEXT_PUBLIC_APP_URL;
+  if (customDomain) allowedOrigins.add(customDomain);
 
   if (origin && allowedOrigins.has(origin)) {
     return true;

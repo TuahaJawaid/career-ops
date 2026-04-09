@@ -379,10 +379,8 @@ export default function DiscoverPage() {
             </p>
           </div>
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-            <DialogTrigger>
-              <Button variant="outline" size="sm" className="gap-1">
-                <Plus className="h-3.5 w-3.5" /> Add Company
-              </Button>
+            <DialogTrigger className="inline-flex items-center justify-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+              <Plus className="h-3.5 w-3.5" /> Add Company
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>

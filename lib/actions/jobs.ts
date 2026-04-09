@@ -2,7 +2,7 @@
 
 import { getDb } from "@/lib/db";
 import { jobs, aiGenerations } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function getJobs(showArchived = false) {

@@ -1,3 +1,5 @@
+export const maxDuration = 60;
+
 import { NextResponse } from "next/server";
 import { evaluateJob } from "@/lib/ai/evaluate-job";
 import { getJob, updateJob, logAiGeneration } from "@/lib/actions/jobs";

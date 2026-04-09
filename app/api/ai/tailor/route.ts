@@ -1,3 +1,5 @@
+export const maxDuration = 60;
+
 import { tailorResume } from "@/lib/ai/tailor-resume";
 import { getJob } from "@/lib/actions/jobs";
 import { getResume } from "@/lib/actions/resumes";
