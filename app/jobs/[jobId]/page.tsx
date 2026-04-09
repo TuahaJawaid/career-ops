@@ -29,8 +29,7 @@ import {
 import { toast } from "sonner";
 import { getJob, archiveJob } from "@/lib/actions/jobs";
 import { createApplication } from "@/lib/actions/applications";
-import { getBaseResumes } from "@/lib/actions/resumes";
-import { saveTailoredResume } from "@/lib/actions/resumes";
+import { getBaseResumes, getTailoredResumesForJob, saveTailoredResume } from "@/lib/actions/resumes";
 import { GradeBadge } from "@/components/shared/grade-badge";
 import { type Grade } from "@/lib/constants";
 
@@ -55,15 +54,6 @@ export default function JobDetailPage() {
   const [copiedResume, setCopiedResume] = useState(false);
   const [copiedCover, setCopiedCover] = useState(false);
 
-  useEffect(() => {
-    const id = params.jobId as string;
-    getJob(id).then(setJob);
-    getBaseResumes().then((resumes) => {
-      setBaseResumes(resumes);
-      if (resumes.length > 0) setSelectedResumeId(resumes[0].id);
-    });
-  }, [params.jobId]);
-
   // Parse sections from streamed content
   const parseSections = useCallback((content: string) => {
     const resumeMatch = content.match(/---RESUME---([\s\S]*?)(?=---COVER LETTER---|$)/);
@@ -74,6 +64,23 @@ export default function JobDetailPage() {
     setCoverLetterSection((coverMatch?.[1] ?? "").trim());
     setNotesSection((notesMatch?.[1] ?? "").trim());
   }, []);
+
+  useEffect(() => {
+    const id = params.jobId as string;
+    getJob(id).then(setJob);
+    getBaseResumes().then((resumes) => {
+      setBaseResumes(resumes);
+      if (resumes.length > 0) setSelectedResumeId(resumes[0].id);
+    });
+    // Load existing tailored resume for this job
+    getTailoredResumesForJob(id).then((tailored) => {
+      if (tailored.length > 0) {
+        const latest = tailored[0];
+        setTailoredContent(latest.content);
+        parseSections(latest.content);
+      }
+    });
+  }, [params.jobId, parseSections]);
 
   if (!job) return null;
 
@@ -171,59 +178,66 @@ export default function JobDetailPage() {
     });
   }
 
-  function downloadAsPdf(content: string, title: string) {
-    // Convert markdown-style content to basic HTML for professional PDF
-    const htmlContent = content
-      .replace(/^### (.+)$/gm, '<h3 style="margin:16px 0 8px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2c3e50;border-bottom:2px solid #4F7DF3;padding-bottom:4px;">$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2 style="margin:20px 0 8px;font-size:16px;font-weight:700;color:#1a1a2e;">$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1 style="margin:0 0 4px;font-size:22px;font-weight:700;color:#1a1a2e;">$1</h1>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/^[-•] (.+)$/gm, '<li style="margin:3px 0;padding-left:4px;">$1</li>')
-      .replace(/(<li.*<\/li>\n?)+/g, '<ul style="margin:4px 0 12px 16px;padding:0;list-style-type:disc;">$&</ul>')
-      .replace(/\n\n/g, '<br/>')
-      .replace(/\n/g, '<br/>');
-
+  function downloadAsPdf(content: string, title: string, type: "resume" | "cover" = "resume") {
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       toast.error("Please allow popups to download PDF");
       return;
     }
 
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${title}</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-          @page { margin: 0.6in 0.7in; size: letter; }
-          body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            font-size: 11px;
-            line-height: 1.5;
-            color: #2c2c2c;
-            max-width: 100%;
-            margin: 0;
-            padding: 0;
-          }
-          h1 { font-size: 22px; margin: 0 0 2px; color: #1a1a2e; }
-          h2 { font-size: 15px; margin: 18px 0 6px; color: #1a1a2e; border-bottom: 1.5px solid #4F7DF3; padding-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
-          h3 { font-size: 13px; margin: 14px 0 4px; color: #2c3e50; }
-          ul { margin: 4px 0 10px 16px; padding: 0; }
-          li { margin: 2px 0; }
-          strong { font-weight: 600; }
-          p { margin: 6px 0; }
-          a { color: #4F7DF3; text-decoration: none; }
-        </style>
-      </head>
-      <body>${htmlContent}</body>
-      </html>
-    `);
+    if (type === "resume") {
+      // Match Aimun's exact resume template — single page, compact, professional
+      const htmlContent = content
+        .replace(/^### (.+)$/gm, '<div class="section-head">$1</div>')
+        .replace(/^## (.+)$/gm, '<div class="section-head">$1</div>')
+        .replace(/^# (.+)$/gm, '<div class="name">$1</div>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+        .replace(/\n\n/g, '<br/>')
+        .replace(/\n/g, ' ');
+
+      printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Calibri:wght@400;700&family=Arial:wght@400;700&display=swap');
+@page { margin: 0.4in 0.5in; size: letter; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Calibri, Arial, sans-serif; font-size: 10px; line-height: 1.35; color: #000; }
+.name { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; text-align: center; margin-bottom: 1px; }
+.contact { text-align: center; font-size: 9.5px; color: #333; margin-bottom: 6px; }
+.contact a { color: #333; text-decoration: none; }
+.summary { font-size: 9.5px; line-height: 1.4; margin-bottom: 4px; }
+.skills-grid { display: flex; flex-wrap: wrap; gap: 0; margin-bottom: 2px; }
+.skills-grid span { width: 33.33%; font-size: 9px; padding: 1px 0; }
+.skills-grid span::before { content: "• "; }
+.section-head { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1.5px solid #000; padding-bottom: 1px; margin: 7px 0 4px; }
+.job-title { font-size: 10px; font-weight: 700; margin-top: 4px; }
+.job-meta { font-size: 9px; color: #444; margin-bottom: 2px; }
+ul { margin: 1px 0 3px 14px; padding: 0; }
+li { font-size: 9.5px; line-height: 1.35; margin: 1px 0; }
+strong { font-weight: 700; }
+.edu { font-size: 9.5px; margin: 2px 0; }
+</style></head><body>${htmlContent}</body></html>`);
+    } else {
+      // Cover letter — clean, professional letter format
+      const htmlContent = content
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br/>');
+
+      printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Calibri:wght@400;700&display=swap');
+@page { margin: 1in; size: letter; }
+body { font-family: Calibri, Arial, sans-serif; font-size: 11px; line-height: 1.6; color: #1a1a1a; }
+p { margin: 0 0 10px; }
+strong { font-weight: 700; }
+</style></head><body><p>${htmlContent}</p></body></html>`);
+    }
+
     printWindow.document.close();
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
+    setTimeout(() => { printWindow.print(); }, 500);
   }
 
   function copyToClipboard(text: string, type: "resume" | "cover") {
@@ -481,7 +495,8 @@ export default function JobDetailPage() {
                         className="gap-1"
                         onClick={() => downloadAsPdf(
                           resumeSection,
-                          `Resume - ${job!.title} at ${job!.company ?? "Company"}`
+                          `Resume - ${job!.title} at ${job!.company ?? "Company"}`,
+                          "resume"
                         )}
                       >
                         <Download className="h-3.5 w-3.5" /> Download PDF
@@ -524,7 +539,8 @@ export default function JobDetailPage() {
                         className="gap-1"
                         onClick={() => downloadAsPdf(
                           coverLetterSection,
-                          `Cover Letter - ${job!.title} at ${job!.company ?? "Company"}`
+                          `Cover Letter - ${job!.title} at ${job!.company ?? "Company"}`,
+                          "cover"
                         )}
                       >
                         <Download className="h-3.5 w-3.5" /> Download PDF

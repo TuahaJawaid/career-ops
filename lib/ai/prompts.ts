@@ -61,30 +61,58 @@ ${params.jobDescription}
 ${params.baseResume}
 
 ## Instructions
-Produce TWO sections clearly separated:
+Produce THREE sections clearly separated.
 
 ### SECTION 1: TAILORED RESUME
-1. Reorganize experience bullets to prioritize relevant accounting/finance skills
-2. Naturally incorporate these ATS keywords where truthful: ${params.keywords.join(", ")}
-3. Quantify achievements where possible
-4. Keep the same overall structure but optimize ordering and emphasis
-5. Do NOT fabricate experience or skills
-6. Output in clean, professional markdown format ready for PDF conversion
-7. Use clear section headers: PROFESSIONAL SUMMARY, PROFESSIONAL EXPERIENCE, EDUCATION, SKILLS, CERTIFICATIONS
+Follow this EXACT format to fit on ONE page. Use the candidate's original resume structure:
+
+# AIMUN NAEEM, CPA
+(contact line: phone | email | linkedin)
+
+(Professional summary: 3-4 lines, dense, results-focused. Start with "Results-driven CPA with X+ years...")
+
+(Skills grid: 9 skills in 3 columns using bullet points, like:
+• Revenue Recognition • NetSuite & Kantata Systems • SOX Controls & Audit Support)
+
+## PROFESSIONAL EXPERIENCE
+**Job Title | Company | Date Range**
+• Bullet point achievement (quantified, start with action verb)
+• Bullet point achievement
+• Bullet point achievement
+
+(Repeat for each role, 3-4 bullets per role, most recent roles get more bullets)
+
+## EDUCATION & CERTIFICATION
+**Certification** | Issuing Body | Date
+**Degree** | University | Date
+
+Rules:
+1. Keep the EXACT same roles, companies, and dates from the base resume
+2. Rewrite bullet points to emphasize skills matching: ${params.keywords.join(", ")}
+3. Every bullet MUST start with a strong action verb and include a quantified result
+4. Keep it CONCISE. Maximum 4 bullets per role. Total resume must fit ONE page
+5. Do NOT fabricate experience, companies, dates, or certifications
+6. Do NOT add roles or experience not in the original resume
+7. Use plain text formatting, no fancy characters
 
 ### SECTION 2: COVER LETTER
-After the resume, write a professional cover letter:
-1. Address to Hiring Manager at ${params.company || "the company"}
-2. Opening paragraph: Express interest in the ${params.jobTitle} role and briefly state qualifications
-3. Body paragraphs: Connect 2-3 specific achievements from the resume to the job requirements
-4. Closing paragraph: Express enthusiasm and call to action
-5. Keep it under 400 words, professional but personable
-6. Do NOT fabricate experience
+Write a cover letter that sounds like a real person wrote it, not AI.
+
+Rules for the cover letter:
+1. Address to "Dear Hiring Manager" at ${params.company || "the company"}
+2. NEVER use em-dashes (--). Use commas or periods instead
+3. NEVER use these AI-sounding phrases: "I am writing to express", "I am excited to", "I am confident that", "I believe my", "thrilled", "passionate about", "leveraging", "utilizing", "spearheading"
+4. Write like a professional accountant talks: direct, specific, numbers-focused
+5. Opening: State the role you are applying for and your most relevant qualification in one sentence
+6. Body (2 short paragraphs): Pick 2 specific achievements from the resume and explain how they directly relate to what the job needs. Use actual numbers
+7. Closing: One sentence, thank them, say you look forward to discussing further
+8. Maximum 250 words total. Short paragraphs. No fluff
+9. Do NOT fabricate experience
 
 ### SECTION 3: TAILORING NOTES
-Briefly list the key changes made to the resume and why.
+List 3-5 bullet points of key changes made and why.
 
-Use these exact section dividers:
+Use these EXACT section dividers:
 ---RESUME---
 (resume content)
 ---COVER LETTER---
