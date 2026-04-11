@@ -1,8 +1,8 @@
 "use server";
 
 import { getDb } from "@/lib/db";
-import { discoveredJobs, jobs, companyCareerPages } from "@/lib/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { discoveredJobs, jobs, companyCareerPages, resumes, aiGenerations } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { isUsLocation } from "@/lib/us-filter";
 
@@ -117,6 +117,10 @@ export async function purgeUsJobs() {
     deletedDiscovered++;
   }
   for (const id of usSavedIds) {
+    // Delete dependents that lack onDelete cascade
+    await db.delete(resumes).where(eq(resumes.jobId, id));
+    await db.delete(aiGenerations).where(eq(aiGenerations.jobId, id));
+    // applications cascade automatically
     await db.delete(jobs).where(eq(jobs.id, id));
     deletedSaved++;
   }
