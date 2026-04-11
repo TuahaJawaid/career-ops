@@ -2,16 +2,19 @@
 
 import { getDb } from "@/lib/db";
 import { discoveredJobs, jobs, companyCareerPages } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { isUsLocation } from "@/lib/us-filter";
 
 export async function getDiscoveredJobs() {
   const db = getDb();
-  return db
+  const allJobs = await db
     .select()
     .from(discoveredJobs)
     .where(eq(discoveredJobs.isSaved, false))
     .orderBy(desc(discoveredJobs.discoveredAt));
+  // Filter out any US-based jobs that slipped through
+  return allJobs.filter((j) => !isUsLocation(j.location));
 }
 
 export async function saveDiscoveredJob(discoveredJobId: string) {
@@ -85,11 +88,44 @@ export async function insertDiscoveredJobs(
   const existingSaved = await db.select({ url: jobs.url }).from(jobs);
   existingSaved.forEach((j) => j.url && existingUrls.add(j.url));
 
-  const newJobs = jobsData.filter((j) => !j.url || !existingUrls.has(j.url));
+  const newJobs = jobsData
+    .filter((j) => !j.url || !existingUrls.has(j.url))
+    .filter((j) => !isUsLocation(j.location)); // Never insert US jobs
   if (newJobs.length === 0) return;
 
   await db.insert(discoveredJobs).values(newJobs);
   revalidatePath("/discover");
+}
+
+// Purge all US-based jobs from discovered_jobs and jobs tables
+export async function purgeUsJobs() {
+  const db = getDb();
+
+  // Get all discovered jobs with US locations
+  const allDiscovered = await db.select({ id: discoveredJobs.id, location: discoveredJobs.location }).from(discoveredJobs);
+  const usDiscoveredIds = allDiscovered.filter((j) => isUsLocation(j.location)).map((j) => j.id);
+
+  // Get all saved jobs with US locations
+  const allSaved = await db.select({ id: jobs.id, location: jobs.location }).from(jobs);
+  const usSavedIds = allSaved.filter((j) => isUsLocation(j.location)).map((j) => j.id);
+
+  let deletedDiscovered = 0;
+  let deletedSaved = 0;
+
+  for (const id of usDiscoveredIds) {
+    await db.delete(discoveredJobs).where(eq(discoveredJobs.id, id));
+    deletedDiscovered++;
+  }
+  for (const id of usSavedIds) {
+    await db.delete(jobs).where(eq(jobs.id, id));
+    deletedSaved++;
+  }
+
+  revalidatePath("/discover");
+  revalidatePath("/jobs");
+  revalidatePath("/dashboard");
+
+  return { deletedDiscovered, deletedSaved };
 }
 
 // Company Career Pages
