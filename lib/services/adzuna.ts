@@ -27,7 +27,7 @@ interface AdzunaResponse {
   mean: number;
 }
 
-const ADZUNA_COUNTRIES = ["us", "gb", "ca", "au", "de", "fr", "in", "nl", "sg"] as const;
+const ADZUNA_COUNTRIES = ["gb", "ca", "au", "de", "fr", "in", "nl", "sg"] as const;
 type AdzunaCountry = (typeof ADZUNA_COUNTRIES)[number];
 
 export function isAdzunaConfigured(): boolean {
@@ -49,7 +49,7 @@ export async function searchAdzunaJobs(params: {
   // Map our country codes to Adzuna-supported ones
   const country = (params.country && ADZUNA_COUNTRIES.includes(params.country as AdzunaCountry))
     ? params.country
-    : "us";
+    : "gb";
 
   const page = params.page ?? 1;
   const resultsPerPage = params.resultsPerPage ?? 20;

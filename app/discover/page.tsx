@@ -50,7 +50,6 @@ type CareerPage = Awaited<ReturnType<typeof getCareerPages>>[number];
 
 const REGIONS = [
   { value: "all", label: "All Regions" },
-  { value: "us", label: "United States" },
   { value: "gb", label: "United Kingdom" },
   { value: "ca", label: "Canada" },
   { value: "ae", label: "UAE" },
@@ -60,6 +59,8 @@ const REGIONS = [
   { value: "in", label: "India" },
   { value: "fr", label: "France" },
   { value: "nl", label: "Netherlands" },
+  { value: "sa", label: "Saudi Arabia" },
+  { value: "my", label: "Malaysia" },
 ];
 
 const DATE_OPTIONS = [
