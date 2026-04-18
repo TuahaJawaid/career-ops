@@ -55,9 +55,9 @@ export default function ClassicTemplate({ data }: { data: ResumeData }) {
             <h2 style={headingStyle}>Experience</h2>
             {data.experience.filter((e) => e.visible).map((exp) => (
               <div key={exp.id} style={{ marginBottom: "10px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <strong style={{ fontSize: `${gs.baseFontSize + 1}px` }}>{exp.position}</strong>
-                  <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#666" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap" as const, gap: "2px 8px" }}>
+                  <strong style={{ fontSize: `${gs.baseFontSize + 1}px`, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{exp.position}</strong>
+                  <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#666", flexShrink: 0, whiteSpace: "nowrap" }}>
                     {exp.startDate} - {exp.current ? "Present" : exp.endDate}
                   </span>
                 </div>
@@ -80,9 +80,9 @@ export default function ClassicTemplate({ data }: { data: ResumeData }) {
             <h2 style={headingStyle}>Education</h2>
             {data.education.filter((e) => e.visible).map((edu) => (
               <div key={edu.id} style={{ marginBottom: "8px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <strong style={{ fontSize: `${gs.baseFontSize + 1}px` }}>{edu.school}</strong>
-                  <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#666" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap" as const, gap: "2px 8px" }}>
+                  <strong style={{ fontSize: `${gs.baseFontSize + 1}px`, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{edu.school}</strong>
+                  <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#666", flexShrink: 0, whiteSpace: "nowrap" }}>
                     {edu.startDate} - {edu.endDate}
                   </span>
                 </div>
@@ -114,7 +114,7 @@ export default function ClassicTemplate({ data }: { data: ResumeData }) {
             <h2 style={headingStyle}>Projects</h2>
             {data.projects.filter((p) => p.visible).map((proj) => (
               <div key={proj.id} style={{ marginBottom: "8px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap" as const, gap: "2px 8px" }}>
                   <strong style={{ fontSize: `${gs.baseFontSize + 1}px` }}>{proj.name}</strong>
                   {proj.date && <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#666" }}>{proj.date}</span>}
                 </div>
@@ -133,7 +133,7 @@ export default function ClassicTemplate({ data }: { data: ResumeData }) {
           <div key={id} style={sectionStyle}>
             <h2 style={headingStyle}>Certifications</h2>
             {data.certifications.filter((c) => c.visible).map((cert) => (
-              <div key={cert.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <div key={cert.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", flexWrap: "wrap" as const, gap: "2px 8px" }}>
                 <span style={{ fontSize: `${gs.baseFontSize}px` }}>
                   <strong>{cert.name}</strong>{cert.issuer ? ` - ${cert.issuer}` : ""}
                 </span>
@@ -148,7 +148,7 @@ export default function ClassicTemplate({ data }: { data: ResumeData }) {
   };
 
   return (
-    <div style={{ fontFamily: gs.fontFamily, padding: `${gs.pagePadding}px`, color: "#1a1a1a", lineHeight: gs.lineHeight }}>
+    <div style={{ fontFamily: gs.fontFamily, padding: `${gs.pagePadding}px`, color: "#1a1a1a", lineHeight: gs.lineHeight, overflowWrap: "break-word", wordBreak: "break-word" }}>
       {enabled.map((s) => renderSection(s.id))}
     </div>
   );

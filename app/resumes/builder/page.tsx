@@ -349,6 +349,9 @@ export default function ResumeBuilderPage() {
               width: "8.5in",
               minHeight: "11in",
               maxWidth: "100%",
+              overflow: "hidden",
+              overflowWrap: "break-word",
+              wordBreak: "break-word",
             }}
           >
             <TemplateComponent data={resumeData} />

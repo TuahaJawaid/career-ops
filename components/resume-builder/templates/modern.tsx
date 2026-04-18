@@ -49,7 +49,7 @@ export default function ModernTemplate({ data }: { data: ResumeData }) {
             <h2 style={headingStyle}>{dot} Experience</h2>
             {data.experience.filter((e) => e.visible).map((exp) => (
               <div key={exp.id} style={{ marginBottom: "12px", paddingLeft: "16px", borderLeft: `2px solid ${gs.themeColor}22` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap" as const, gap: "2px 8px" }}>
                   <strong style={{ fontSize: `${gs.baseFontSize + 1}px` }}>{exp.position}</strong>
                   <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#888", whiteSpace: "nowrap" }}>
                     {exp.startDate} - {exp.current ? "Present" : exp.endDate}
@@ -73,7 +73,7 @@ export default function ModernTemplate({ data }: { data: ResumeData }) {
             <h2 style={headingStyle}>{dot} Education</h2>
             {data.education.filter((e) => e.visible).map((edu) => (
               <div key={edu.id} style={{ marginBottom: "8px", paddingLeft: "16px", borderLeft: `2px solid ${gs.themeColor}22` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap" as const, gap: "2px 8px" }}>
                   <strong style={{ fontSize: `${gs.baseFontSize + 1}px` }}>{edu.school}</strong>
                   <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#888" }}>{edu.startDate} - {edu.endDate}</span>
                 </div>
@@ -98,7 +98,7 @@ export default function ModernTemplate({ data }: { data: ResumeData }) {
             <h2 style={headingStyle}>{dot} Projects</h2>
             {data.projects.filter((p) => p.visible).map((proj) => (
               <div key={proj.id} style={{ marginBottom: "8px", paddingLeft: "16px", borderLeft: `2px solid ${gs.themeColor}22` }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "2px 8px" }}>
                   <strong style={{ fontSize: `${gs.baseFontSize + 1}px` }}>{proj.name}</strong>
                   {proj.date && <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#888" }}>{proj.date}</span>}
                 </div>
@@ -113,7 +113,7 @@ export default function ModernTemplate({ data }: { data: ResumeData }) {
           <div key={id} style={sectionStyle}>
             <h2 style={headingStyle}>{dot} Certifications</h2>
             {data.certifications.filter((c) => c.visible).map((cert) => (
-              <div key={cert.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <div key={cert.id} style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "2px 8px", marginBottom: "4px" }}>
                 <span style={{ fontSize: `${gs.baseFontSize}px` }}><strong>{cert.name}</strong>{cert.issuer ? ` - ${cert.issuer}` : ""}</span>
                 {cert.date && <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#888" }}>{cert.date}</span>}
               </div>
@@ -126,7 +126,7 @@ export default function ModernTemplate({ data }: { data: ResumeData }) {
   };
 
   return (
-    <div style={{ fontFamily: gs.fontFamily, padding: `${gs.pagePadding}px`, color: "#222", lineHeight: gs.lineHeight }}>
+    <div style={{ fontFamily: gs.fontFamily, padding: `${gs.pagePadding}px`, color: "#222", lineHeight: gs.lineHeight, overflowWrap: "break-word", wordBreak: "break-word" }}>
       {enabled.map((s) => renderSection(s.id))}
     </div>
   );

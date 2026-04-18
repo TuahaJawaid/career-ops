@@ -47,7 +47,7 @@ export default function ElegantTemplate({ data }: { data: ResumeData }) {
             <h2 style={headingStyle}>Professional Experience</h2>
             {data.experience.filter((e) => e.visible).map((exp, i) => (
               <div key={exp.id} style={{ marginBottom: "12px", paddingBottom: i < data.experience.filter(e => e.visible).length - 1 ? "8px" : "0", borderBottom: i < data.experience.filter(e => e.visible).length - 1 ? `1px dotted #e5e5e5` : "none" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap" as const, gap: "2px 8px" }}>
                   <strong style={{ fontSize: `${gs.baseFontSize + 1}px`, color: "#222" }}>{exp.position}</strong>
                   <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#999", fontStyle: "italic" }}>{exp.startDate} - {exp.current ? "Present" : exp.endDate}</span>
                 </div>
@@ -65,7 +65,7 @@ export default function ElegantTemplate({ data }: { data: ResumeData }) {
             <h2 style={headingStyle}>Education</h2>
             {data.education.filter((e) => e.visible).map((edu) => (
               <div key={edu.id} style={{ marginBottom: "8px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "2px 8px" }}>
                   <strong style={{ fontSize: `${gs.baseFontSize + 1}px` }}>{edu.school}</strong>
                   <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#999", fontStyle: "italic" }}>{edu.startDate} - {edu.endDate}</span>
                 </div>
@@ -87,7 +87,7 @@ export default function ElegantTemplate({ data }: { data: ResumeData }) {
             <h2 style={headingStyle}>Projects</h2>
             {data.projects.filter((p) => p.visible).map((proj) => (
               <div key={proj.id} style={{ marginBottom: "8px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "2px 8px" }}>
                   <strong>{proj.name}</strong>
                   {proj.date && <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#999", fontStyle: "italic" }}>{proj.date}</span>}
                 </div>
@@ -102,7 +102,7 @@ export default function ElegantTemplate({ data }: { data: ResumeData }) {
           <div key={id} style={sectionStyle}>
             <h2 style={headingStyle}>Certifications</h2>
             {data.certifications.filter((c) => c.visible).map((cert) => (
-              <div key={cert.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <div key={cert.id} style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" as const, gap: "2px 8px", marginBottom: "4px" }}>
                 <span style={{ fontSize: `${gs.baseFontSize}px` }}><strong>{cert.name}</strong>{cert.issuer ? ` - ${cert.issuer}` : ""}</span>
                 {cert.date && <span style={{ fontSize: `${gs.baseFontSize - 1}px`, color: "#999", fontStyle: "italic" }}>{cert.date}</span>}
               </div>
@@ -115,7 +115,7 @@ export default function ElegantTemplate({ data }: { data: ResumeData }) {
   };
 
   return (
-    <div style={{ fontFamily: gs.fontFamily, padding: `${gs.pagePadding}px`, color: "#333", lineHeight: gs.lineHeight }}>
+    <div style={{ fontFamily: gs.fontFamily, padding: `${gs.pagePadding}px`, color: "#333", lineHeight: gs.lineHeight, overflowWrap: "break-word", wordBreak: "break-word" }}>
       {enabled.map((s) => renderSection(s.id))}
     </div>
   );
