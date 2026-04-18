@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, Plus, Upload, Trash2 } from "lucide-react";
+import { FileText, Plus, Upload, Trash2, Paintbrush } from "lucide-react";
 import { toast } from "sonner";
 import { getResumes, createBaseResume, deleteResume } from "@/lib/actions/resumes";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -66,11 +66,18 @@ export default function ResumesPage() {
         <p className="text-sm text-muted-foreground">
           {baseResumes.length} base, {tailoredResumes.length} tailored
         </p>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            <Upload className="h-4 w-4" />
-            Upload Base Resume
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Link href="/resumes/builder">
+            <Button className="gap-2">
+              <Paintbrush className="h-4 w-4" />
+              Resume Builder
+            </Button>
+          </Link>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger className="inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+              <Upload className="h-4 w-4" />
+              Upload Text
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Upload Base Resume</DialogTitle>
@@ -92,6 +99,7 @@ export default function ResumesPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {resumes.length === 0 ? (
