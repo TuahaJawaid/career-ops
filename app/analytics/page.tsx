@@ -16,19 +16,35 @@ export default function AnalyticsPage() {
   const [jobCount, setJobCount] = useState(0);
   const [discoveredCount, setDiscoveredCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getApplications(), getJobs(), getDiscoveredJobs()]).then(
-      ([a, j, d]) => {
+    let mounted = true;
+    (async () => {
+      try {
+        const [a, j, d] = await Promise.all([
+          getApplications(),
+          getJobs(),
+          getDiscoveredJobs(),
+        ]);
+        if (!mounted) return;
         setApps(a);
         setJobCount(j.length);
         setDiscoveredCount(d.length);
-        setLoaded(true);
+      } catch {
+        if (!mounted) return;
+        setLoadError("Failed to load analytics.");
+      } finally {
+        if (mounted) setLoaded(true);
       }
-    );
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  if (!loaded) return null;
+  if (!loaded) return <div className="text-sm text-muted-foreground">Loading analytics...</div>;
+  if (loadError) return <div className="text-sm text-destructive">{loadError}</div>;
 
   // Funnel data
   const statusCounts: Record<string, number> = {};

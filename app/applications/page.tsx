@@ -39,15 +39,28 @@ const KANBAN_COLUMNS: { status: ApplicationStatus; label: string; color: string 
 export default function ApplicationsPage() {
   const [apps, setApps] = useState<Application[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [draggedApp, setDraggedApp] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   useEffect(() => {
-    getApplications().then((a) => {
-      setApps(a);
-      setLoaded(true);
-    });
+    let mounted = true;
+    (async () => {
+      try {
+        const a = await getApplications();
+        if (!mounted) return;
+        setApps(a);
+      } catch {
+        if (!mounted) return;
+        setLoadError("Failed to load applications.");
+      } finally {
+        if (mounted) setLoaded(true);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   function handleDragStart(e: React.DragEvent, appId: string) {
@@ -98,7 +111,16 @@ export default function ApplicationsPage() {
     });
   }
 
-  if (!loaded) return null;
+  if (!loaded) return <div className="text-sm text-muted-foreground">Loading applications...</div>;
+  if (loadError) {
+    return (
+      <EmptyState
+        icon={Send}
+        title="Could not load applications"
+        description={loadError}
+      />
+    );
+  }
 
   if (apps.length === 0) {
     return (

@@ -26,19 +26,32 @@ export default function SettingsPage() {
   const [newRole, setNewRole] = useState("");
   const [newRegion, setNewRegion] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    getProfile().then((profile) => {
-      if (profile) {
-        setFullName(profile.fullName);
-        setEmail(profile.email ?? "");
-        setPhone(profile.phone ?? "");
-        setLocation(profile.location ?? "");
-        setTargetRoles((profile.targetRoles as string[]) ?? []);
-        setTargetRegions((profile.targetRegions as string[]) ?? []);
+    let mounted = true;
+    (async () => {
+      try {
+        const profile = await getProfile();
+        if (!mounted) return;
+        if (profile) {
+          setFullName(profile.fullName);
+          setEmail(profile.email ?? "");
+          setPhone(profile.phone ?? "");
+          setLocation(profile.location ?? "");
+          setTargetRoles((profile.targetRoles as string[]) ?? []);
+          setTargetRegions((profile.targetRegions as string[]) ?? []);
+        }
+      } catch {
+        if (!mounted) return;
+        setLoadError("Failed to load settings.");
+      } finally {
+        if (mounted) setLoaded(true);
       }
-      setLoaded(true);
-    });
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   function handleSave() {
@@ -69,7 +82,8 @@ export default function SettingsPage() {
     }
   }
 
-  if (!loaded) return null;
+  if (!loaded) return <div className="text-sm text-muted-foreground">Loading settings...</div>;
+  if (loadError) return <div className="text-sm text-destructive">{loadError}</div>;
 
   return (
     <div className="max-w-2xl space-y-6">

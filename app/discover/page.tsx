@@ -91,6 +91,7 @@ export default function DiscoverPage() {
   const [isPending, startTransition] = useTransition();
   const [searching, setSearching] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Search params (sent to API)
   const [query, setQuery] = useState("Senior Accountant");
@@ -118,14 +119,26 @@ export default function DiscoverPage() {
   const [newCategory, setNewCategory] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      getDiscoveredJobs(),
-      seedDefaultCareerPages().then(() => getCareerPages()),
-    ]).then(([j, cp]) => {
-      setJobs(j);
-      setCareerPages(cp);
-      setLoaded(true);
-    });
+    let mounted = true;
+    (async () => {
+      try {
+        const [j, cp] = await Promise.all([
+          getDiscoveredJobs(),
+          seedDefaultCareerPages().then(() => getCareerPages()),
+        ]);
+        if (!mounted) return;
+        setJobs(j);
+        setCareerPages(cp);
+      } catch {
+        if (!mounted) return;
+        setLoadError("Failed to load discover data.");
+      } finally {
+        if (mounted) setLoaded(true);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Get unique sources from current results
@@ -247,7 +260,15 @@ export default function DiscoverPage() {
     });
   }
 
-  if (!loaded) return null;
+  if (!loaded) return <div className="text-sm text-muted-foreground">Loading discover jobs...</div>;
+  if (loadError) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-destructive">{loadError}</p>
+        <Button onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
+  }
 
   const careerPagesByCategory = careerPages.reduce<Record<string, CareerPage[]>>(
     (acc, page) => {

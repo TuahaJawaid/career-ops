@@ -23,12 +23,25 @@ export default function ResumesPage() {
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    getResumes().then((r) => {
-      setResumes(r);
-      setLoaded(true);
-    });
+    let mounted = true;
+    (async () => {
+      try {
+        const r = await getResumes();
+        if (!mounted) return;
+        setResumes(r);
+      } catch {
+        if (!mounted) return;
+        setLoadError("Failed to load resumes.");
+      } finally {
+        if (mounted) setLoaded(true);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   function handleUpload() {
@@ -55,7 +68,16 @@ export default function ResumesPage() {
     });
   }
 
-  if (!loaded) return null;
+  if (!loaded) return <div className="text-sm text-muted-foreground">Loading resumes...</div>;
+  if (loadError) {
+    return (
+      <EmptyState
+        icon={FileText}
+        title="Could not load resumes"
+        description={loadError}
+      />
+    );
+  }
 
   const baseResumes = resumes.filter((r) => r.isBase);
   const tailoredResumes = resumes.filter((r) => !r.isBase);

@@ -29,6 +29,7 @@ const INTERACTION_TYPES = [
 export default function ContactsPage() {
   const [contactsList, setContactsList] = useState<Contact[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<string | null>(null);
@@ -48,7 +49,22 @@ export default function ContactsPage() {
   const [interactionNote, setInteractionNote] = useState("");
 
   useEffect(() => {
-    getContacts().then((c) => { setContactsList(c); setLoaded(true); });
+    let mounted = true;
+    (async () => {
+      try {
+        const c = await getContacts();
+        if (!mounted) return;
+        setContactsList(c);
+      } catch {
+        if (!mounted) return;
+        setLoadError("Failed to load contacts.");
+      } finally {
+        if (mounted) setLoaded(true);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   function handleAdd() {
@@ -96,7 +112,16 @@ export default function ContactsPage() {
     });
   }
 
-  if (!loaded) return null;
+  if (!loaded) return <div className="text-sm text-muted-foreground">Loading contacts...</div>;
+  if (loadError) {
+    return (
+      <EmptyState
+        icon={Users}
+        title="Could not load contacts"
+        description={loadError}
+      />
+    );
+  }
 
   const selected = contactsList.find((c) => c.id === selectedContact);
 
