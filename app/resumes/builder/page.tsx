@@ -42,7 +42,6 @@ import ElegantTemplate from "@/components/resume-builder/templates/elegant";
 import {
   createDefaultResume,
   type ResumeData,
-  type MenuSection,
 } from "@/lib/resume-builder/types";
 
 const TEMPLATES = [
@@ -63,15 +62,12 @@ const SECTION_ICONS: Record<string, typeof User> = {
 };
 
 const STORAGE_KEY = "career-ops-resume-builder";
-
-function getTemplateComponent(templateId: string) {
-  switch (templateId) {
-    case "modern": return ModernTemplate;
-    case "minimal": return MinimalTemplate;
-    case "elegant": return ElegantTemplate;
-    default: return ClassicTemplate;
-  }
-}
+const TEMPLATE_COMPONENTS = {
+  classic: ClassicTemplate,
+  modern: ModernTemplate,
+  minimal: MinimalTemplate,
+  elegant: ElegantTemplate,
+} as const;
 
 export default function ResumeBuilderPage() {
   const [resumeData, setResumeData] = useState<ResumeData>(() => {
@@ -191,7 +187,7 @@ export default function ResumeBuilderPage() {
     input.click();
   }, []);
 
-  const TemplateComponent = getTemplateComponent(resumeData.templateId);
+  const TemplateComponent = TEMPLATE_COMPONENTS[resumeData.templateId as keyof typeof TEMPLATE_COMPONENTS] ?? ClassicTemplate;
   const sortedSections = [...resumeData.menuSections].sort((a, b) => a.order - b.order);
 
   const renderActiveEditor = () => {

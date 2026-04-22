@@ -5,6 +5,7 @@ import { discoveredJobs, jobs, companyCareerPages, resumes, aiGenerations } from
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { isUsLocation } from "@/lib/us-filter";
+import { assertMutationRequestAllowed } from "@/lib/action-auth";
 
 export async function getDiscoveredJobs() {
   const db = getDb();
@@ -18,6 +19,7 @@ export async function getDiscoveredJobs() {
 }
 
 export async function saveDiscoveredJob(discoveredJobId: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   const discovered = await db
     .select()
@@ -55,6 +57,7 @@ export async function saveDiscoveredJob(discoveredJobId: string) {
 }
 
 export async function dismissDiscoveredJob(id: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db.delete(discoveredJobs).where(eq(discoveredJobs.id, id));
   revalidatePath("/discover");
@@ -74,6 +77,7 @@ export async function insertDiscoveredJobs(
     postedDate?: string;
   }[]
 ) {
+  await assertMutationRequestAllowed();
   if (jobsData.length === 0) return;
   const db = getDb();
 
@@ -99,6 +103,7 @@ export async function insertDiscoveredJobs(
 
 // Purge all US-based jobs from discovered_jobs and jobs tables
 export async function purgeUsJobs() {
+  await assertMutationRequestAllowed();
   const db = getDb();
 
   // Get all discovered jobs with US locations
@@ -146,12 +151,14 @@ export async function addCareerPage(data: {
   url: string;
   category?: string;
 }) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db.insert(companyCareerPages).values({ ...data, isCustom: true });
   revalidatePath("/discover");
 }
 
 export async function removeCareerPage(id: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db.delete(companyCareerPages).where(eq(companyCareerPages.id, id));
   revalidatePath("/discover");
@@ -160,6 +167,7 @@ export async function removeCareerPage(id: string) {
 const SEED_VERSION = 2; // Bump this to re-seed with updated list
 
 export async function seedDefaultCareerPages() {
+  await assertMutationRequestAllowed();
   const db = getDb();
 
   // Check if we need to re-seed (version check via count)

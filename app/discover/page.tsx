@@ -351,7 +351,7 @@ export default function DiscoverPage() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            Searches LinkedIn, Indeed, Glassdoor, ZipRecruiter, Remotive, WeWorkRemotely, Arbeitnow{isAdzunaActive() ? ", Adzuna" : ""} and more.
+            Searches LinkedIn, Indeed, Glassdoor, ZipRecruiter, Remotive, WeWorkRemotely, Arbeitnow, and more.
             Jobs auto-fetch daily at 8 AM UTC.
           </p>
         </CardContent>
@@ -644,7 +644,3 @@ export default function DiscoverPage() {
   );
 }
 
-// Helper to check if Adzuna is in source counts (for display only)
-function isAdzunaActive() {
-  return !!(typeof window === "undefined" && process.env.ADZUNA_APP_ID);
-}

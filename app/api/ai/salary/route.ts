@@ -5,6 +5,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { getJob } from "@/lib/actions/jobs";
 import { validateInternalRequest } from "@/lib/api-auth";
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
 
 const salarySchema = z.object({
   estimatedMin: z.number(),
@@ -17,8 +18,16 @@ const salarySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  if (!(await validateInternalRequest())) {
+  if (!(await validateInternalRequest(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+  const limiter = checkRateLimit({
+    key: `ai:salary:${getClientIdentifier(request)}`,
+    maxRequests: 20,
+    windowMs: 60_000,
+  });
+  if (!limiter.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   const body = await request.json();

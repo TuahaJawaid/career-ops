@@ -5,6 +5,11 @@ import { applications, applicationEvents, jobs, reminders } from "@/lib/db/schem
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addBusinessDays } from "date-fns";
+import { z } from "zod";
+import { APPLICATION_STATUSES } from "@/lib/constants";
+import { assertMutationRequestAllowed } from "@/lib/action-auth";
+
+const applicationStatusSchema = z.enum(APPLICATION_STATUSES);
 
 export async function getApplications() {
   const db = getDb();
@@ -64,6 +69,7 @@ export async function getApplicationEvents(applicationId: string) {
 }
 
 export async function createApplication(jobId: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   const result = await db
     .insert(applications)
@@ -86,6 +92,13 @@ export async function updateApplicationStatus(
   newStatus: string,
   note?: string
 ) {
+  await assertMutationRequestAllowed();
+  const parsedStatus = applicationStatusSchema.safeParse(newStatus);
+  if (!parsedStatus.success) {
+    throw new Error("Invalid application status");
+  }
+  const nextStatus = parsedStatus.data;
+
   const db = getDb();
   const existing = await db
     .select()
@@ -100,9 +113,9 @@ export async function updateApplicationStatus(
   await db
     .update(applications)
     .set({
-      status: newStatus as typeof existing[0]["status"],
+      status: nextStatus,
       appliedDate:
-        newStatus === "applied" && !existing[0].appliedDate
+        nextStatus === "applied" && !existing[0].appliedDate
           ? new Date()
           : existing[0].appliedDate,
       updatedAt: new Date(),
@@ -112,12 +125,12 @@ export async function updateApplicationStatus(
   await db.insert(applicationEvents).values({
     applicationId: id,
     fromStatus,
-    toStatus: newStatus,
+    toStatus: nextStatus,
     note,
   });
 
   // Auto-create follow-up reminder when moving to "applied"
-  if (newStatus === "applied" && fromStatus !== "applied") {
+  if (nextStatus === "applied" && fromStatus !== "applied") {
     await db.insert(reminders).values({
       applicationId: id,
       title: "Follow up on application",
@@ -126,7 +139,7 @@ export async function updateApplicationStatus(
   }
 
   // Auto-create thank-you reminder after interview
-  if (newStatus === "interview" && fromStatus !== "interview") {
+  if (nextStatus === "interview" && fromStatus !== "interview") {
     await db.insert(reminders).values({
       applicationId: id,
       title: "Send thank-you email after interview",
@@ -143,6 +156,7 @@ export async function updateApplicationNotes(
   id: string,
   data: { notes?: string; nextStep?: string; nextStepDate?: Date | null }
 ) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db
     .update(applications)
@@ -152,6 +166,7 @@ export async function updateApplicationNotes(
 }
 
 export async function deleteApplication(id: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db.delete(applications).where(eq(applications.id, id));
   revalidatePath("/applications");

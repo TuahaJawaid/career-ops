@@ -5,6 +5,7 @@ import { reminders, applications, jobs } from "@/lib/db/schema";
 import { eq, desc, and, lte, gte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { addBusinessDays, startOfDay, endOfDay } from "date-fns";
+import { assertMutationRequestAllowed } from "@/lib/action-auth";
 
 export async function getRemindersForApplication(applicationId: string) {
   const db = getDb();
@@ -74,6 +75,7 @@ export async function createReminder(data: {
   dueDate: Date;
   note?: string;
 }) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db.insert(reminders).values(data);
   revalidatePath("/dashboard");
@@ -81,6 +83,7 @@ export async function createReminder(data: {
 }
 
 export async function createAutoFollowUp(applicationId: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   const dueDate = addBusinessDays(new Date(), 5);
   await db.insert(reminders).values({
@@ -92,6 +95,7 @@ export async function createAutoFollowUp(applicationId: string) {
 }
 
 export async function completeReminder(id: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db
     .update(reminders)
@@ -101,6 +105,7 @@ export async function completeReminder(id: string) {
 }
 
 export async function deleteReminder(id: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db.delete(reminders).where(eq(reminders.id, id));
   revalidatePath("/dashboard");

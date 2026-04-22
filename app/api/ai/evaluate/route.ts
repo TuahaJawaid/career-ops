@@ -6,10 +6,19 @@ import { getJob, updateJob, logAiGeneration } from "@/lib/actions/jobs";
 import { getBaseResumes } from "@/lib/actions/resumes";
 import { getProfile } from "@/lib/actions/settings";
 import { validateInternalRequest } from "@/lib/api-auth";
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
-  if (!(await validateInternalRequest())) {
+  if (!(await validateInternalRequest(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+  const limiter = checkRateLimit({
+    key: `ai:evaluate:${getClientIdentifier(request)}`,
+    maxRequests: 20,
+    windowMs: 60_000,
+  });
+  if (!limiter.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   const body = await request.json();

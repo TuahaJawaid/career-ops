@@ -65,10 +65,16 @@ export default function ClassicTemplate({ data }: { data: ResumeData }) {
                   {exp.company}{exp.location ? ` | ${exp.location}` : ""}
                 </div>
                 {exp.description && (
-                  <div
-                    style={{ fontSize: `${gs.baseFontSize}px`, lineHeight: gs.lineHeight, marginTop: "4px", whiteSpace: "pre-wrap" }}
-                    dangerouslySetInnerHTML={{ __html: exp.description.replace(/^[-•]\s*/gm, '<span style="margin-right:4px">&#8226;</span>').split('\n').map(line => `<div style="padding-left:12px;text-indent:-12px">${line}</div>`).join('') }}
-                  />
+                  <div style={{ fontSize: `${gs.baseFontSize}px`, lineHeight: gs.lineHeight, marginTop: "4px", whiteSpace: "pre-wrap" }}>
+                    {exp.description.split("\n").filter((line) => line.trim().length > 0).map((line, index) => {
+                      const cleaned = line.replace(/^[-•]\s*/, "").trim();
+                      return (
+                        <div key={`${exp.id}-line-${index}`} style={{ paddingLeft: "12px", textIndent: "-12px" }}>
+                          {"* "}{cleaned}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             ))}

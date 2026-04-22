@@ -4,10 +4,19 @@ import { tailorResume } from "@/lib/ai/tailor-resume";
 import { getJob } from "@/lib/actions/jobs";
 import { getResume } from "@/lib/actions/resumes";
 import { validateInternalRequest } from "@/lib/api-auth";
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
-  if (!(await validateInternalRequest())) {
+  if (!(await validateInternalRequest(request))) {
     return new Response("Unauthorized", { status: 403 });
+  }
+  const limiter = checkRateLimit({
+    key: `ai:tailor:${getClientIdentifier(request)}`,
+    maxRequests: 10,
+    windowMs: 60_000,
+  });
+  if (!limiter.allowed) {
+    return new Response("Too many requests", { status: 429 });
   }
 
   const body = await request.json();

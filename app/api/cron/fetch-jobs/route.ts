@@ -4,10 +4,10 @@ import { NextResponse } from "next/server";
 import { searchAllSources } from "@/lib/services/job-search";
 import { insertDiscoveredJobs } from "@/lib/actions/discover";
 import { getProfile } from "@/lib/actions/settings";
+import { validateCronSecret } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!validateCronSecret(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

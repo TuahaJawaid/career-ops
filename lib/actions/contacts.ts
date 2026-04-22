@@ -4,6 +4,10 @@ import { getDb } from "@/lib/db";
 import { contacts, contactInteractions } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { assertMutationRequestAllowed } from "@/lib/action-auth";
+
+const interactionTypeSchema = z.enum(["email", "linkedin", "call", "meeting", "referral"]);
 
 export async function getContacts() {
   const db = getDb();
@@ -36,6 +40,7 @@ export async function createContact(data: {
   jobId?: string;
   applicationId?: string;
 }) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   const result = await db.insert(contacts).values(data).returning();
   revalidatePath("/contacts");
@@ -54,6 +59,7 @@ export async function updateContact(
     notes: string;
   }>
 ) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db
     .update(contacts)
@@ -63,6 +69,7 @@ export async function updateContact(
 }
 
 export async function deleteContact(id: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db.delete(contacts).where(eq(contacts.id, id));
   revalidatePath("/contacts");
@@ -83,9 +90,16 @@ export async function addInteraction(data: {
   note?: string;
   date?: Date;
 }) {
+  await assertMutationRequestAllowed();
+  const parsedType = interactionTypeSchema.safeParse(data.type);
+  if (!parsedType.success) {
+    throw new Error("Invalid interaction type");
+  }
+
   const db = getDb();
   await db.insert(contactInteractions).values({
     ...data,
+    type: parsedType.data,
     date: data.date ?? new Date(),
   });
   // Update contact's updatedAt

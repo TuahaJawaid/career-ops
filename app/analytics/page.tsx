@@ -7,7 +7,7 @@ import { BarChart3, TrendingUp, Clock, Target } from "lucide-react";
 import { getApplications } from "@/lib/actions/applications";
 import { getJobs } from "@/lib/actions/jobs";
 import { getDiscoveredJobs } from "@/lib/actions/discover";
-import { APPLICATION_STATUSES, STATUS_LABELS, STATUS_COLORS, type ApplicationStatus } from "@/lib/constants";
+import { APPLICATION_STATUSES, STATUS_LABELS, STATUS_COLORS } from "@/lib/constants";
 
 type Application = Awaited<ReturnType<typeof getApplications>>[number];
 
@@ -40,7 +40,8 @@ export default function AnalyticsPage() {
   const interviews = statusCounts["interview"] + statusCounts["technical"];
   const offers = statusCounts["offer"] + statusCounts["accepted"];
 
-  const responseRate = totalApps > 0 ? Math.round(((totalApps - statusCounts["saved"] - statusCounts["rejected"]) / Math.max(applied, 1)) * 100) : 0;
+  const responded = statusCounts["screening"] + statusCounts["interview"] + statusCounts["technical"] + statusCounts["offer"] + statusCounts["accepted"] + statusCounts["rejected"] + statusCounts["withdrawn"];
+  const responseRate = applied > 0 ? Math.min(100, Math.max(0, Math.round((responded / applied) * 100))) : 0;
   const interviewRate = applied > 0 ? Math.round((interviews / applied) * 100) : 0;
   const offerRate = interviews > 0 ? Math.round((offers / Math.max(interviews, 1)) * 100) : 0;
 

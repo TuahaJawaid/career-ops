@@ -73,6 +73,11 @@ export default function JobDetailPage() {
     setNotesSection((notesMatch?.[1] ?? "").trim());
   }, []);
 
+  function extractTailoringNotes(content: string) {
+    const notesMatch = content.match(/---TAILORING NOTES---([\s\S]*?)$/);
+    return (notesMatch?.[1] ?? "").trim();
+  }
+
   useEffect(() => {
     const id = params.jobId as string;
     getJob(id).then(setJob);
@@ -198,11 +203,12 @@ export default function JobDetailPage() {
       }
 
       // Save the tailored resume
+      const parsedNotes = extractTailoringNotes(full);
       await saveTailoredResume({
         name: `Tailored for ${job!.title} at ${job!.company ?? "Company"}`,
         content: full,
         jobId: job!.id,
-        tailoringNotes: notesSection || undefined,
+        tailoringNotes: parsedNotes || undefined,
         keywordsAdded: (job!.keywords as string[]) ?? [],
       });
 

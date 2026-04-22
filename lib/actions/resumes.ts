@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { resumes } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { assertMutationRequestAllowed } from "@/lib/action-auth";
 
 export async function getResumes() {
   const db = getDb();
@@ -35,6 +36,7 @@ export async function getTailoredResumesForJob(jobId: string) {
 }
 
 export async function createBaseResume(data: { name: string; content: string }) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   const result = await db
     .insert(resumes)
@@ -52,6 +54,7 @@ export async function saveTailoredResume(data: {
   keywordsAdded?: string[];
   matchScore?: number;
 }) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   const result = await db
     .insert(resumes)
@@ -62,6 +65,7 @@ export async function saveTailoredResume(data: {
 }
 
 export async function deleteResume(id: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db.delete(resumes).where(eq(resumes.id, id));
   revalidatePath("/resumes");

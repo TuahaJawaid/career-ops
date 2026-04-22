@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { jobs, aiGenerations } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { assertMutationRequestAllowed } from "@/lib/action-auth";
 
 export async function getJobs(showArchived = false) {
   const db = getDb();
@@ -31,6 +32,7 @@ export async function createJob(data: {
   salary?: string;
   source?: string;
 }) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   const result = await db.insert(jobs).values(data).returning();
   revalidatePath("/jobs");
@@ -63,6 +65,7 @@ export async function updateJob(
     keywords: string[];
   }>
 ) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db
     .update(jobs)
@@ -74,6 +77,7 @@ export async function updateJob(
 }
 
 export async function archiveJob(id: string) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db
     .update(jobs)
@@ -95,6 +99,7 @@ export async function logAiGeneration(data: {
   totalTokens?: number;
   durationMs?: number;
 }) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   await db.insert(aiGenerations).values(data);
 }

@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { profiles } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { assertMutationRequestAllowed } from "@/lib/action-auth";
 
 export async function getProfile() {
   const db = getDb();
@@ -19,6 +20,7 @@ export async function upsertProfile(data: {
   targetRoles?: string[];
   targetRegions?: string[];
 }) {
+  await assertMutationRequestAllowed();
   const db = getDb();
   const existing = await db.select().from(profiles).limit(1);
 
