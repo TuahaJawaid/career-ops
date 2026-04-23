@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { MobileNav } from "./mobile-nav";
 import { ChevronDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { type FormEvent, useState } from "react";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -31,10 +32,19 @@ const navItems = [
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
   const title =
     Object.entries(pageTitles).find(([path]) =>
       pathname.startsWith(path)
     )?.[1] ?? "Career Ops";
+
+  function handleSearchSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    router.push(`/discover?query=${encodeURIComponent(q)}`);
+  }
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/80 bg-[#0b0c0f]/88 px-4 backdrop-blur-xl sm:px-6">
@@ -108,10 +118,18 @@ export function Header() {
           })}
         </nav>
       </div>
-      <div className="hidden items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground lg:flex">
+      <form
+        onSubmit={handleSearchSubmit}
+        className="hidden items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground lg:flex"
+      >
         <Search className="h-3.5 w-3.5" />
-        Search jobs, companies, actions...
-      </div>
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search jobs or companies..."
+          className="w-56 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+        />
+      </form>
     </header>
   );
 }

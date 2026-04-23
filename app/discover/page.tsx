@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +106,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function DiscoverPage() {
+  const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<DiscoveredJob[]>([]);
   const [careerPages, setCareerPages] = useState<CareerPage[]>([]);
   const [subscriptions, setSubscriptions] = useState<RoleSubscription[]>([]);
@@ -146,6 +148,7 @@ export default function DiscoverPage() {
   const [newSubscriptionName, setNewSubscriptionName] = useState("");
   const [newSubscriptionQuery, setNewSubscriptionQuery] = useState("");
   const [newFollowCompany, setNewFollowCompany] = useState("");
+  const [urlQueryHandled, setUrlQueryHandled] = useState(false);
 
   async function refreshOptionalFeatureData() {
     try {
@@ -193,6 +196,20 @@ export default function DiscoverPage() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const q = searchParams.get("query");
+    if (!q) return;
+    setQuery(q);
+    setUrlQueryHandled(false);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const q = searchParams.get("query");
+    if (!loaded || !q || urlQueryHandled) return;
+    setUrlQueryHandled(true);
+    void handleSearch();
+  }, [loaded, searchParams, urlQueryHandled]);
 
   // Get unique sources from current results
   const availableSources = useMemo(() => {

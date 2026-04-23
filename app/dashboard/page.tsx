@@ -154,13 +154,6 @@ export default async function DashboardPage() {
         )
       : 0;
 
-  const eventByApplication = new Map<string, Date>();
-  for (const event of recentEvents) {
-    if (!eventByApplication.has(event.applicationId)) {
-      eventByApplication.set(event.applicationId, new Date(event.createdAt));
-    }
-  }
-
   const pipelineRows = activePipeline
     .slice()
     .sort((a, b) => {
@@ -244,8 +237,8 @@ export default async function DashboardPage() {
           {[
             { label: "Open Roles", value: jobCount },
             { label: "Active Applications", value: activePipeline.length },
-            { label: "Interview Rate", value: `${interviewRate}%` },
-            { label: "Offer Rate", value: `${offerRate}%` },
+            { label: "Overdue Tasks", value: reminderStats.overdue },
+            { label: "Interviews This Week", value: interviewsThisWeek },
           ].map((metric) => (
             <div key={metric.label} className="rounded-2xl border border-border/60 bg-muted/25 px-4 py-3">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">{metric.label}</p>
@@ -261,24 +254,6 @@ export default async function DashboardPage() {
             <CardTitle className="text-lg">Pipeline Health</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5 pt-5">
-            <div className="grid gap-4 md:grid-cols-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Saved</p>
-                <p className="mt-1 text-xl font-semibold">{statusMap.saved ?? 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Applied</p>
-                <p className="mt-1 text-xl font-semibold">{statusMap.applied ?? 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">In Interviews</p>
-                <p className="mt-1 text-xl font-semibold">{(statusMap.screening ?? 0) + interviews}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Offers</p>
-                <p className="mt-1 text-xl font-semibold">{offers}</p>
-              </div>
-            </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Response Progress</span>
