@@ -9,100 +9,111 @@ import { APPLICATION_STATUSES, STATUS_COLORS, STATUS_LABELS, type ApplicationSta
 import { formatDistanceToNow } from "date-fns";
 
 async function getDashboardData() {
+  const fallback = {
+    jobCount: 0,
+    discoveredCount: 0,
+    allApps: [],
+    appRows: [],
+    recentEvents: [],
+    gradeBreakdown: [],
+    dueReminders: [],
+  };
+
   try {
-    const db = getDb();
+    const result = await Promise.race([
+      (async () => {
+        const db = getDb();
 
-    const [jobCount] = await db
-      .select({ count: count() })
-      .from(jobs)
-      .where(eq(jobs.isArchived, false));
+        const [jobCount] = await db
+          .select({ count: count() })
+          .from(jobs)
+          .where(eq(jobs.isArchived, false));
 
-    const allApps = await db
-      .select({ status: applications.status, count: count() })
-      .from(applications)
-      .groupBy(applications.status);
+        const allApps = await db
+          .select({ status: applications.status, count: count() })
+          .from(applications)
+          .groupBy(applications.status);
 
-    const appRows = await db
-      .select({
-        id: applications.id,
-        status: applications.status,
-        updatedAt: applications.updatedAt,
-        nextStep: applications.nextStep,
-        nextStepDate: applications.nextStepDate,
-        appliedDate: applications.appliedDate,
-        jobTitle: jobs.title,
-        company: jobs.company,
-        source: jobs.source,
-      })
-      .from(applications)
-      .innerJoin(jobs, eq(applications.jobId, jobs.id))
-      .orderBy(desc(applications.updatedAt));
+        const appRows = await db
+          .select({
+            id: applications.id,
+            status: applications.status,
+            updatedAt: applications.updatedAt,
+            nextStep: applications.nextStep,
+            nextStepDate: applications.nextStepDate,
+            appliedDate: applications.appliedDate,
+            jobTitle: jobs.title,
+            company: jobs.company,
+            source: jobs.source,
+          })
+          .from(applications)
+          .innerJoin(jobs, eq(applications.jobId, jobs.id))
+          .orderBy(desc(applications.updatedAt));
 
-    const recentEvents = await db
-      .select({
-        id: applicationEvents.id,
-        applicationId: applicationEvents.applicationId,
-        toStatus: applicationEvents.toStatus,
-        note: applicationEvents.note,
-        createdAt: applicationEvents.createdAt,
-        jobTitle: jobs.title,
-        company: jobs.company,
-      })
-      .from(applicationEvents)
-      .innerJoin(applications, eq(applicationEvents.applicationId, applications.id))
-      .innerJoin(jobs, eq(applications.jobId, jobs.id))
-      .orderBy(desc(applicationEvents.createdAt))
-      .limit(20);
+        const recentEvents = await db
+          .select({
+            id: applicationEvents.id,
+            applicationId: applicationEvents.applicationId,
+            toStatus: applicationEvents.toStatus,
+            note: applicationEvents.note,
+            createdAt: applicationEvents.createdAt,
+            jobTitle: jobs.title,
+            company: jobs.company,
+          })
+          .from(applicationEvents)
+          .innerJoin(applications, eq(applicationEvents.applicationId, applications.id))
+          .innerJoin(jobs, eq(applications.jobId, jobs.id))
+          .orderBy(desc(applicationEvents.createdAt))
+          .limit(20);
 
-    const gradeBreakdown = await db
-      .select({ grade: jobs.grade, count: count() })
-      .from(jobs)
-      .where(eq(jobs.isArchived, false))
-      .groupBy(jobs.grade);
+        const gradeBreakdown = await db
+          .select({ grade: jobs.grade, count: count() })
+          .from(jobs)
+          .where(eq(jobs.isArchived, false))
+          .groupBy(jobs.grade);
 
-    const [discoveredCount] = await db
-      .select({ count: count() })
-      .from(discoveredJobs)
-      .where(eq(discoveredJobs.isSaved, false));
+        const [discoveredCount] = await db
+          .select({ count: count() })
+          .from(discoveredJobs)
+          .where(eq(discoveredJobs.isSaved, false));
 
-    // Due reminders
-    const today = new Date();
-    const dueReminders = await db
-      .select({
-        id: reminders.id,
-        title: reminders.title,
-        dueDate: reminders.dueDate,
-        jobTitle: jobs.title,
-        company: jobs.company,
-      })
-      .from(reminders)
-      .innerJoin(applications, eq(reminders.applicationId, applications.id))
-      .innerJoin(jobs, eq(applications.jobId, jobs.id))
-      .where(
-        and(eq(reminders.isCompleted, false), lte(reminders.dueDate, new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)))
-      )
-      .orderBy(reminders.dueDate)
-      .limit(10);
+        // Due reminders
+        const today = new Date();
+        const dueReminders = await db
+          .select({
+            id: reminders.id,
+            title: reminders.title,
+            dueDate: reminders.dueDate,
+            jobTitle: jobs.title,
+            company: jobs.company,
+          })
+          .from(reminders)
+          .innerJoin(applications, eq(reminders.applicationId, applications.id))
+          .innerJoin(jobs, eq(applications.jobId, jobs.id))
+          .where(
+            and(eq(reminders.isCompleted, false), lte(reminders.dueDate, new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)))
+          )
+          .orderBy(reminders.dueDate)
+          .limit(10);
 
-    return {
-      jobCount: jobCount.count,
-      discoveredCount: discoveredCount.count,
-      allApps,
-      appRows,
-      recentEvents,
-      gradeBreakdown,
-      dueReminders,
-    };
+        return {
+          jobCount: jobCount.count,
+          discoveredCount: discoveredCount.count,
+          allApps,
+          appRows,
+          recentEvents,
+          gradeBreakdown,
+          dueReminders,
+        };
+      })(),
+      new Promise<typeof fallback>((_, reject) => {
+        setTimeout(() => reject(new Error("Dashboard data timeout")), 4000);
+      }),
+    ]);
+
+    return result;
   } catch {
-    return {
-      jobCount: 0,
-      discoveredCount: 0,
-      allApps: [],
-      appRows: [],
-      recentEvents: [],
-      gradeBreakdown: [],
-      dueReminders: [],
-    };
+    return fallback;
   }
 }
 
