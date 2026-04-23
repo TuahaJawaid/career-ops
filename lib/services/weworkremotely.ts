@@ -18,6 +18,8 @@ interface WWRJob {
   region: string;
 }
 
+import { jobMatchesQuery } from "./search-match";
+
 // RSS categories relevant to accounting roles
 const RELEVANT_FEEDS = [
   "https://weworkremotely.com/categories/remote-management-and-finance-jobs.rss",
@@ -53,19 +55,15 @@ export async function searchWeWorkRemotelyJobs(params: {
     return true;
   });
 
-  // Strict title filter
-  const queryLower = params.query.toLowerCase().trim();
-  const keyWords = queryLower
-    .split(/\s+/)
-    .filter((w) => !["senior", "junior", "lead", "staff", "principal", "associate", "manager"].includes(w));
-
   return unique
-    .filter((job) => {
-      const titleLower = job.title.toLowerCase();
-      if (titleLower.includes(queryLower)) return true;
-      if (keyWords.length > 0 && keyWords.every((word) => titleLower.includes(word))) return true;
-      return false;
-    })
+    .filter((job) =>
+      jobMatchesQuery({
+        query: params.query,
+        title: job.title,
+        description: job.description,
+        tags: [job.region],
+      })
+    )
     .map(normalizeJob);
 }
 

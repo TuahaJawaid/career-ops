@@ -24,6 +24,8 @@ interface RemotiveResponse {
   jobs: RemotiveJob[];
 }
 
+import { jobMatchesQuery } from "./search-match";
+
 export async function searchRemotiveJobs(params: {
   query: string;
   limit?: number;
@@ -44,19 +46,15 @@ export async function searchRemotiveJobs(params: {
 
   const data: RemotiveResponse = await response.json();
 
-  // Strict filter: title must contain the full query phrase OR all key words
-  const queryLower = params.query.toLowerCase().trim();
-  const keyWords = queryLower
-    .split(/\s+/)
-    .filter((w) => !["senior", "junior", "lead", "staff", "principal", "associate", "manager"].includes(w));
-
   return data.jobs
-    .filter((job) => {
-      const titleLower = job.title.toLowerCase();
-      if (titleLower.includes(queryLower)) return true;
-      if (keyWords.length > 0 && keyWords.every((word) => titleLower.includes(word))) return true;
-      return false;
-    })
+    .filter((job) =>
+      jobMatchesQuery({
+        query: params.query,
+        title: job.title,
+        description: job.description,
+        tags: [job.category, ...job.tags],
+      })
+    )
     .map(normalizeJob);
 }
 

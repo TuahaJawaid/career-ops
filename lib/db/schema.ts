@@ -201,6 +201,127 @@ export const contactInteractions = pgTable("contact_interactions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const followedCompanies = pgTable("followed_companies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  company: varchar("company", { length: 255 }).notNull(),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastMatchedAt: timestamp("last_matched_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const roleSubscriptions = pgTable("role_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  query: varchar("query", { length: 500 }).notNull(),
+  matchMode: varchar("match_mode", { length: 20 }).default("balanced").notNull(), // focused | balanced | broad
+  excludedCountries: jsonb("excluded_countries").$type<string[]>().default(["us", "il"]),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastRunAt: timestamp("last_run_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const roleAlerts = pgTable("role_alerts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  subscriptionId: uuid("subscription_id")
+    .references(() => roleSubscriptions.id, { onDelete: "cascade" })
+    .notNull(),
+  discoveredJobId: uuid("discovered_job_id")
+    .references(() => discoveredJobs.id, { onDelete: "cascade" })
+    .notNull(),
+  reason: varchar("reason", { length: 255 }),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const followedCompanyAlerts = pgTable("followed_company_alerts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  followedCompanyId: uuid("followed_company_id")
+    .references(() => followedCompanies.id, { onDelete: "cascade" })
+    .notNull(),
+  discoveredJobId: uuid("discovered_job_id")
+    .references(() => discoveredJobs.id, { onDelete: "cascade" })
+    .notNull(),
+  reason: varchar("reason", { length: 255 }),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const offerReviews = pgTable("offer_reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  applicationId: uuid("application_id")
+    .references(() => applications.id, { onDelete: "cascade" })
+    .notNull(),
+  compensationScore: integer("compensation_score").default(0).notNull(),
+  growthScore: integer("growth_score").default(0).notNull(),
+  flexibilityScore: integer("flexibility_score").default(0).notNull(),
+  stabilityScore: integer("stability_score").default(0).notNull(),
+  weightedScore: real("weighted_score").default(0),
+  notes: text("notes"),
+  recommendation: varchar("recommendation", { length: 50 }), // accept | negotiate | decline
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const applicationQualityChecks = pgTable("application_quality_checks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  applicationId: uuid("application_id")
+    .references(() => applications.id, { onDelete: "cascade" })
+    .notNull(),
+  score: integer("score").notNull(),
+  status: varchar("status", { length: 20 }).notNull(), // pass | warn | fail
+  criteria: jsonb("criteria")
+    .$type<
+      {
+        id: string;
+        label: string;
+        passed: boolean;
+        note?: string;
+      }[]
+    >()
+    .default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const interviewPrepPacks = pgTable("interview_prep_packs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  applicationId: uuid("application_id")
+    .references(() => applications.id, { onDelete: "cascade" })
+    .notNull(),
+  summary: text("summary"),
+  likelyQuestions: jsonb("likely_questions").$type<string[]>().default([]),
+  starPrompts: jsonb("star_prompts").$type<string[]>().default([]),
+  accountingScenarios: jsonb("accounting_scenarios").$type<string[]>().default([]),
+  generatedByModel: varchar("generated_by_model", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const calendarSyncSettings = pgTable("calendar_sync_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  provider: varchar("provider", { length: 50 }).default("google").notNull(),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  calendarId: varchar("calendar_id", { length: 255 }).default("primary"),
+  isEnabled: boolean("is_enabled").default(false).notNull(),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const calendarSyncEvents = pgTable("calendar_sync_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reminderId: uuid("reminder_id").references(() => reminders.id, { onDelete: "cascade" }),
+  externalEventId: varchar("external_event_id", { length: 255 }).notNull(),
+  provider: varchar("provider", { length: 50 }).default("google").notNull(),
+  lastSyncedAt: timestamp("last_synced_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const jobsRelations = relations(jobs, ({ many }) => ({
   applications: many(applications),
@@ -214,6 +335,9 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
     references: [resumes.id],
   }),
   events: many(applicationEvents),
+  offerReviews: many(offerReviews),
+  qualityChecks: many(applicationQualityChecks),
+  interviewPrepPacks: many(interviewPrepPacks),
 }));
 
 export const applicationEventsRelations = relations(applicationEvents, ({ one }) => ({
@@ -225,4 +349,34 @@ export const applicationEventsRelations = relations(applicationEvents, ({ one })
 
 export const resumesRelations = relations(resumes, ({ one }) => ({
   job: one(jobs, { fields: [resumes.jobId], references: [jobs.id] }),
+}));
+
+export const roleSubscriptionsRelations = relations(roleSubscriptions, ({ many }) => ({
+  alerts: many(roleAlerts),
+}));
+
+export const roleAlertsRelations = relations(roleAlerts, ({ one }) => ({
+  subscription: one(roleSubscriptions, {
+    fields: [roleAlerts.subscriptionId],
+    references: [roleSubscriptions.id],
+  }),
+  discoveredJob: one(discoveredJobs, {
+    fields: [roleAlerts.discoveredJobId],
+    references: [discoveredJobs.id],
+  }),
+}));
+
+export const followedCompaniesRelations = relations(followedCompanies, ({ many }) => ({
+  alerts: many(followedCompanyAlerts),
+}));
+
+export const followedCompanyAlertsRelations = relations(followedCompanyAlerts, ({ one }) => ({
+  followedCompany: one(followedCompanies, {
+    fields: [followedCompanyAlerts.followedCompanyId],
+    references: [followedCompanies.id],
+  }),
+  discoveredJob: one(discoveredJobs, {
+    fields: [followedCompanyAlerts.discoveredJobId],
+    references: [discoveredJobs.id],
+  }),
 }));

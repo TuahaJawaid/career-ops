@@ -23,6 +23,8 @@ interface ArbeitnowResponse {
   meta: { current_page: number; last_page: number };
 }
 
+import { jobMatchesQuery } from "./search-match";
+
 export async function searchArbeitnowJobs(params: {
   query: string;
   page?: number;
@@ -41,22 +43,15 @@ export async function searchArbeitnowJobs(params: {
 
   const data: ArbeitnowResponse = await response.json();
 
-  // Strict filter: title must contain the full query phrase OR all key words
-  // This prevents "Senior Customer Support" matching "Senior Accountant"
-  const queryLower = params.query.toLowerCase().trim();
-  const keyWords = queryLower
-    .split(/\s+/)
-    .filter((w) => !["senior", "junior", "lead", "staff", "principal", "associate", "manager"].includes(w));
-
   return data.data
-    .filter((job) => {
-      const titleLower = job.title.toLowerCase();
-      // Full phrase match in title
-      if (titleLower.includes(queryLower)) return true;
-      // All key words (excluding generic seniority terms) must appear in title
-      if (keyWords.length > 0 && keyWords.every((word) => titleLower.includes(word))) return true;
-      return false;
-    })
+    .filter((job) =>
+      jobMatchesQuery({
+        query: params.query,
+        title: job.title,
+        description: job.description,
+        tags: [...job.tags, ...job.job_types],
+      })
+    )
     .map(normalizeJob);
 }
 

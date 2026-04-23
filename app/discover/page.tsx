@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
@@ -42,11 +43,29 @@ import {
   removeCareerPage,
   seedDefaultCareerPages,
 } from "@/lib/actions/discover";
+import {
+  createRoleSubscription,
+  deleteRoleSubscription,
+  getRoleAlerts,
+  getRoleSubscriptions,
+  markRoleAlertRead,
+} from "@/lib/actions/subscriptions";
+import {
+  followCompany,
+  getFollowedCompanies,
+  getFollowedCompanyAlerts,
+  markFollowedCompanyAlertRead,
+  unfollowCompany,
+} from "@/lib/actions/follows";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatDistanceToNow } from "date-fns";
 
 type DiscoveredJob = Awaited<ReturnType<typeof getDiscoveredJobs>>[number];
 type CareerPage = Awaited<ReturnType<typeof getCareerPages>>[number];
+type RoleSubscription = Awaited<ReturnType<typeof getRoleSubscriptions>>[number];
+type RoleAlert = Awaited<ReturnType<typeof getRoleAlerts>>[number];
+type FollowedCompany = Awaited<ReturnType<typeof getFollowedCompanies>>[number];
+type FollowedCompanyAlert = Awaited<ReturnType<typeof getFollowedCompanyAlerts>>[number];
 
 const REGIONS = [
   { value: "all", label: "All Regions" },
@@ -88,17 +107,24 @@ const SORT_OPTIONS = [
 export default function DiscoverPage() {
   const [jobs, setJobs] = useState<DiscoveredJob[]>([]);
   const [careerPages, setCareerPages] = useState<CareerPage[]>([]);
+  const [subscriptions, setSubscriptions] = useState<RoleSubscription[]>([]);
+  const [roleAlerts, setRoleAlerts] = useState<RoleAlert[]>([]);
+  const [followedCompanies, setFollowedCompanies] = useState<FollowedCompany[]>([]);
+  const [followedAlerts, setFollowedAlerts] = useState<FollowedCompanyAlert[]>([]);
   const [isPending, startTransition] = useTransition();
   const [searching, setSearching] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Search params (sent to API)
-  const [query, setQuery] = useState("Senior Accountant");
+  const [query, setQuery] = useState(
+    "Senior Accountant, Revenue Accountant, Senior Revenue Accountant"
+  );
   const [region, setRegion] = useState("all");
-  const [datePosted, setDatePosted] = useState("week");
+  const [datePosted, setDatePosted] = useState("month");
   const [employmentType, setEmploymentType] = useState("all");
   const [remoteOnly, setRemoteOnly] = useState(false);
+  const [matchModeValue, setMatchModeValue] = useState([1]);
   const [showFilters, setShowFilters] = useState(true);
 
   // Source stats from last search
@@ -117,6 +143,32 @@ export default function DiscoverPage() {
   const [newCompany, setNewCompany] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newCategory, setNewCategory] = useState("");
+  const [newSubscriptionName, setNewSubscriptionName] = useState("");
+  const [newSubscriptionQuery, setNewSubscriptionQuery] = useState("");
+  const [newFollowCompany, setNewFollowCompany] = useState("");
+
+  async function refreshOptionalFeatureData() {
+    try {
+      const [subs, rAlerts, follows, fAlerts] = await Promise.all([
+        getRoleSubscriptions(),
+        getRoleAlerts(),
+        getFollowedCompanies(),
+        getFollowedCompanyAlerts(),
+      ]);
+      setSubscriptions(subs);
+      setRoleAlerts(rAlerts);
+      setFollowedCompanies(follows);
+      setFollowedAlerts(fAlerts);
+      return true;
+    } catch {
+      // New feature tables may not exist yet in some environments.
+      setSubscriptions([]);
+      setRoleAlerts([]);
+      setFollowedCompanies([]);
+      setFollowedAlerts([]);
+      return false;
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -129,6 +181,7 @@ export default function DiscoverPage() {
         if (!mounted) return;
         setJobs(j);
         setCareerPages(cp);
+        await refreshOptionalFeatureData();
       } catch {
         if (!mounted) return;
         setLoadError("Failed to load discover data.");
@@ -190,6 +243,7 @@ export default function DiscoverPage() {
   async function handleSearch() {
     setSearching(true);
     try {
+      const matchMode = matchModeValue[0] === 0 ? "focused" : matchModeValue[0] === 2 ? "broad" : "balanced";
       const res = await fetch("/api/discover/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -199,11 +253,14 @@ export default function DiscoverPage() {
           remoteOnly,
           datePosted,
           employmentTypes: employmentType,
+          matchMode,
         }),
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`Found ${data.count} jobs from ${data.sources?.length ?? 0} sources`);
+        toast.success(
+          `Found ${data.count} jobs from ${data.sources?.length ?? 0} sources`
+        );
         setSourceCounts(data.sources ?? []);
         const updated = await getDiscoveredJobs();
         setJobs(updated);
@@ -215,6 +272,90 @@ export default function DiscoverPage() {
     } finally {
       setSearching(false);
     }
+  }
+
+  function handleCreateSubscription() {
+    if (!newSubscriptionName.trim() || !newSubscriptionQuery.trim()) {
+      toast.error("Subscription name and query are required");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await createRoleSubscription({
+          name: newSubscriptionName.trim(),
+          query: newSubscriptionQuery.trim(),
+        });
+        await refreshOptionalFeatureData();
+        setNewSubscriptionName("");
+        setNewSubscriptionQuery("");
+        toast.success("Role subscription added");
+      } catch {
+        toast.error("Role subscriptions are temporarily unavailable.");
+      }
+    });
+  }
+
+  function handleDeleteSubscription(id: string) {
+    startTransition(async () => {
+      try {
+        await deleteRoleSubscription(id);
+        await refreshOptionalFeatureData();
+        toast.success("Subscription removed");
+      } catch {
+        toast.error("Unable to remove subscription right now.");
+      }
+    });
+  }
+
+  function handleMarkRoleAlertRead(id: string) {
+    startTransition(async () => {
+      try {
+        await markRoleAlertRead(id);
+        await refreshOptionalFeatureData();
+      } catch {
+        toast.error("Unable to update alert right now.");
+      }
+    });
+  }
+
+  function handleFollowCompany() {
+    if (!newFollowCompany.trim()) {
+      toast.error("Company name is required");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await followCompany({ company: newFollowCompany.trim() });
+        await refreshOptionalFeatureData();
+        setNewFollowCompany("");
+        toast.success("Company followed");
+      } catch {
+        toast.error("Company follows are temporarily unavailable.");
+      }
+    });
+  }
+
+  function handleUnfollowCompany(id: string) {
+    startTransition(async () => {
+      try {
+        await unfollowCompany(id);
+        await refreshOptionalFeatureData();
+        toast.success("Company unfollowed");
+      } catch {
+        toast.error("Unable to unfollow company right now.");
+      }
+    });
+  }
+
+  function handleMarkFollowedAlertRead(id: string) {
+    startTransition(async () => {
+      try {
+        await markFollowedCompanyAlertRead(id);
+        await refreshOptionalFeatureData();
+      } catch {
+        toast.error("Unable to update alert right now.");
+      }
+    });
   }
 
   function handleSave(id: string) {
@@ -355,6 +496,28 @@ export default function DiscoverPage() {
                 <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background">
                   <Switch checked={remoteOnly} onCheckedChange={setRemoteOnly} />
                   <span className="text-sm">{remoteOnly ? "Yes" : "No"}</span>
+                </div>
+              </div>
+              <div className="space-y-1.5 col-span-2 md:col-span-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Relevance Breadth</Label>
+                  <span className="text-xs text-muted-foreground">
+                    {matchModeValue[0] === 0 ? "Focused" : matchModeValue[0] === 2 ? "Broad" : "Balanced"}
+                  </span>
+                </div>
+                <div className="px-2 py-2 rounded-md border border-input bg-background">
+                  <Slider
+                    value={matchModeValue}
+                    onValueChange={setMatchModeValue}
+                    min={0}
+                    max={2}
+                    step={1}
+                  />
+                  <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+                    <span>Focused</span>
+                    <span>Balanced</span>
+                    <span>Broad</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -584,6 +747,113 @@ export default function DiscoverPage() {
       )}
 
       {/* Company Career Pages */}
+      <Separator />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Role Alert Subscriptions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto]">
+              <Input
+                value={newSubscriptionName}
+                onChange={(e) => setNewSubscriptionName(e.target.value)}
+                placeholder="Name (e.g. Revenue Core)"
+              />
+              <Input
+                value={newSubscriptionQuery}
+                onChange={(e) => setNewSubscriptionQuery(e.target.value)}
+                placeholder="Role query"
+              />
+              <Button onClick={handleCreateSubscription} disabled={isPending}>Add</Button>
+            </div>
+            <div className="space-y-2">
+              {subscriptions.map((sub) => (
+                <div key={sub.id} className="flex items-center justify-between rounded-md border p-2">
+                  <div>
+                    <p className="text-sm font-medium">{sub.name}</p>
+                    <p className="text-xs text-muted-foreground">{sub.query}</p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => handleDeleteSubscription(sub.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+              {subscriptions.length === 0 && (
+                <p className="text-xs text-muted-foreground">No role subscriptions yet.</p>
+              )}
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Latest role alerts</p>
+              {roleAlerts.slice(0, 6).map((alert) => (
+                <button
+                  key={alert.id}
+                  className="w-full rounded-md border p-2 text-left"
+                  onClick={() => handleMarkRoleAlertRead(alert.id)}
+                >
+                  <p className="text-sm font-medium">
+                    {alert.jobTitle} <span className="text-muted-foreground">at {alert.jobCompany}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">{alert.subscriptionName}</p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Company Follow Tracker</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={newFollowCompany}
+                onChange={(e) => setNewFollowCompany(e.target.value)}
+                placeholder="Follow company (e.g. Stripe)"
+              />
+              <Button onClick={handleFollowCompany} disabled={isPending}>Follow</Button>
+            </div>
+            <div className="space-y-2">
+              {followedCompanies.filter((c) => c.isActive).map((company) => (
+                <div key={company.id} className="flex items-center justify-between rounded-md border p-2">
+                  <div>
+                    <p className="text-sm font-medium">{company.company}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {company.lastMatchedAt ? `Last match ${formatDistanceToNow(new Date(company.lastMatchedAt), { addSuffix: true })}` : "No matches yet"}
+                    </p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => handleUnfollowCompany(company.id)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+              {followedCompanies.filter((c) => c.isActive).length === 0 && (
+                <p className="text-xs text-muted-foreground">No followed companies yet.</p>
+              )}
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Latest company alerts</p>
+              {followedAlerts.slice(0, 6).map((alert) => (
+                <button
+                  key={alert.id}
+                  className="w-full rounded-md border p-2 text-left"
+                  onClick={() => handleMarkFollowedAlertRead(alert.id)}
+                >
+                  <p className="text-sm font-medium">
+                    {alert.jobTitle} <span className="text-muted-foreground">at {alert.jobCompany}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">Followed: {alert.company}</p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Separator />
       <div className="space-y-4">
         <div className="flex items-center justify-between">

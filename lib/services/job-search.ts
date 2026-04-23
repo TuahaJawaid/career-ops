@@ -6,9 +6,10 @@
 import { searchJobs as searchJSearch } from "./jsearch";
 import { searchRemotiveJobs } from "./remotive";
 import { searchArbeitnowJobs } from "./arbeitnow";
-import { searchAdzunaJobs, isAdzunaConfigured } from "./adzuna";
+import { searchAdzunaJobs, isAdzunaConfigured, ADZUNA_COUNTRIES } from "./adzuna";
 import { searchWeWorkRemotelyJobs } from "./weworkremotely";
-import { isUsLocation } from "@/lib/us-filter";
+import { isExcludedLocation } from "@/lib/us-filter";
+import { jobMatchesQuery } from "./search-match";
 
 export interface NormalizedJob {
   externalId?: string;
@@ -54,7 +55,7 @@ export async function searchAllSources(params: SearchParams): Promise<SearchResu
         remoteOnly: params.remoteOnly,
         datePosted: params.datePosted,
         employmentTypes: params.employmentTypes,
-        numPages: params.numPages ?? 5,
+        numPages: params.numPages ?? 8,
       })
         .then((jobs) => ({ name: "jsearch", jobs }))
         .catch((err) => {
@@ -96,13 +97,22 @@ export async function searchAllSources(params: SearchParams): Promise<SearchResu
 
   // 5. Adzuna (optional — needs API key)
   if (isAdzunaConfigured()) {
+    const countriesToSearch = params.country ? [params.country] : [...ADZUNA_COUNTRIES];
     promises.push(
-      searchAdzunaJobs({
-        query: params.query,
-        country: params.country,
-        resultsPerPage: 20,
-      })
-        .then((jobs) => ({ name: "adzuna", jobs }))
+      Promise.all(
+        countriesToSearch.map((country) =>
+          searchAdzunaJobs({
+            query: params.query,
+            country,
+            page: 1,
+            resultsPerPage: 50,
+          }).catch((err) => {
+            console.error(`Adzuna failed for ${country}:`, err);
+            return [] as NormalizedJob[];
+          })
+        )
+      )
+        .then((countryResults) => ({ name: "adzuna", jobs: countryResults.flat() }))
         .catch((err) => {
           console.error("Adzuna failed:", err);
           return { name: "adzuna", jobs: [] as NormalizedJob[] };
@@ -133,13 +143,23 @@ export async function searchAllSources(params: SearchParams): Promise<SearchResu
     return true;
   });
 
-  // Exclude US-based jobs
-  const nonUsJobs = dedupedJobs.filter((job) => !isUsLocation(job.location));
+  // Exclude restricted geographies (US + Israel)
+  const nonUsJobs = dedupedJobs.filter((job) => !isExcludedLocation(job.location));
+
+  // Enforce role relevance for every source, including broad aggregators.
+  const relevantJobs = nonUsJobs.filter((job) =>
+    jobMatchesQuery({
+      query: params.query,
+      title: job.title,
+      description: job.description,
+      tags: [job.source ?? "", job.locationType ?? ""],
+    })
+  );
 
   // Apply remote filter if requested
   const filteredJobs = params.remoteOnly
-    ? nonUsJobs.filter((j) => j.locationType === "remote")
-    : nonUsJobs;
+    ? relevantJobs.filter((j) => j.locationType === "remote")
+    : relevantJobs;
 
   return {
     jobs: filteredJobs,

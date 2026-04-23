@@ -6,8 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { ExternalLink, Building2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -16,6 +14,14 @@ import {
   updateApplicationStatus,
   updateApplicationNotes,
 } from "@/lib/actions/applications";
+import {
+  getLatestQualityCheck,
+  runApplicationQualityCheck,
+} from "@/lib/actions/quality-checks";
+import {
+  generateInterviewPrepPack,
+  getLatestInterviewPrepPack,
+} from "@/lib/actions/interview-prep";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { GradeBadge } from "@/components/shared/grade-badge";
 import { APPLICATION_STATUSES, STATUS_LABELS, type ApplicationStatus, type Grade } from "@/lib/constants";
@@ -30,6 +36,12 @@ export default function ApplicationDetailPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [notes, setNotes] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [qualityCheck, setQualityCheck] = useState<
+    Awaited<ReturnType<typeof getLatestQualityCheck>> | null
+  >(null);
+  const [prepPack, setPrepPack] = useState<
+    Awaited<ReturnType<typeof getLatestInterviewPrepPack>> | null
+  >(null);
 
   useEffect(() => {
     const id = params.applicationId as string;
@@ -38,6 +50,8 @@ export default function ApplicationDetailPage() {
       setNotes(a?.notes ?? "");
     });
     getApplicationEvents(id).then(setEvents);
+    getLatestQualityCheck(id).then(setQualityCheck).catch(() => setQualityCheck(null));
+    getLatestInterviewPrepPack(id).then(setPrepPack).catch(() => setPrepPack(null));
   }, [params.applicationId]);
 
   if (!app) return null;
@@ -58,6 +72,30 @@ export default function ApplicationDetailPage() {
     startTransition(async () => {
       await updateApplicationNotes(app!.id, { notes });
       toast.success("Notes saved");
+    });
+  }
+
+  function handleRunQualityCheck() {
+    startTransition(async () => {
+      try {
+        const result = await runApplicationQualityCheck(app!.id);
+        setQualityCheck(result);
+        toast.success(`Checklist score: ${result.score}`);
+      } catch {
+        toast.error("Checklist is temporarily unavailable.");
+      }
+    });
+  }
+
+  function handleGeneratePrepPack() {
+    startTransition(async () => {
+      try {
+        const result = await generateInterviewPrepPack(app!.id);
+        setPrepPack(result);
+        toast.success("Interview prep pack generated");
+      } catch {
+        toast.error("Interview prep is temporarily unavailable.");
+      }
     });
   }
 
@@ -155,6 +193,84 @@ export default function ApplicationDetailPage() {
                 </div>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Application Quality Checklist</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button size="sm" onClick={handleRunQualityCheck} disabled={isPending}>
+            Run Checklist
+          </Button>
+          {qualityCheck ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                Score {qualityCheck.score} · Status {qualityCheck.status}
+              </p>
+              {(qualityCheck.criteria ?? []).map((item) => (
+                <div key={item.id} className="rounded-md border p-2 text-sm">
+                  <p className="font-medium">
+                    {item.passed ? "PASS" : "WARN"} — {item.label}
+                  </p>
+                  {item.note && (
+                    <p className="text-xs text-muted-foreground">{item.note}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Run checklist to assess submission readiness.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Interview Prep Pack</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button size="sm" onClick={handleGeneratePrepPack} disabled={isPending}>
+            Generate Prep Pack
+          </Button>
+          {prepPack ? (
+            <div className="space-y-3">
+              {prepPack.summary && (
+                <p className="text-sm whitespace-pre-wrap">{prepPack.summary}</p>
+              )}
+              <div>
+                <p className="text-sm font-medium">Likely Questions</p>
+                <ul className="list-disc pl-5 text-sm">
+                  {(prepPack.likelyQuestions ?? []).map((q, idx) => (
+                    <li key={idx}>{q}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-sm font-medium">STAR Prompts</p>
+                <ul className="list-disc pl-5 text-sm">
+                  {(prepPack.starPrompts ?? []).map((q, idx) => (
+                    <li key={idx}>{q}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Accounting Scenarios</p>
+                <ul className="list-disc pl-5 text-sm">
+                  {(prepPack.accountingScenarios ?? []).map((q, idx) => (
+                    <li key={idx}>{q}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Generate a role-specific interview prep pack.
+            </p>
           )}
         </CardContent>
       </Card>

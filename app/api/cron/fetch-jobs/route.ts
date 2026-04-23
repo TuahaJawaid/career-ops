@@ -2,9 +2,10 @@ export const maxDuration = 60;
 
 import { NextResponse } from "next/server";
 import { searchAllSources } from "@/lib/services/job-search";
-import { insertDiscoveredJobs } from "@/lib/actions/discover";
+import { insertDiscoveredJobsFromSystem } from "@/lib/actions/discover";
 import { getProfile } from "@/lib/actions/settings";
 import { validateCronSecret } from "@/lib/api-auth";
+import { expandRoleQueries } from "@/lib/services/role-query-expansion";
 
 export async function GET(request: Request) {
   if (!validateCronSecret(request)) {
@@ -12,11 +13,12 @@ export async function GET(request: Request) {
   }
 
   const profile = await getProfile();
-  const targetRoles = (profile?.targetRoles as string[]) ?? [
+  const baseTargetRoles = (profile?.targetRoles as string[]) ?? [
     "Senior Accountant",
     "Senior Revenue Accountant",
     "Revenue Accountant",
   ];
+  const targetRoles = expandRoleQueries(baseTargetRoles, "broad", 14);
 
   let totalFetched = 0;
   const allSources: { name: string; count: number }[] = [];
@@ -25,12 +27,12 @@ export async function GET(request: Request) {
     try {
       const result = await searchAllSources({
         query: role,
-        datePosted: "week",
-        numPages: 3,
+        datePosted: "month",
+        numPages: 8,
       });
 
       if (result.jobs.length > 0) {
-        await insertDiscoveredJobs(result.jobs);
+        await insertDiscoveredJobsFromSystem(result.jobs);
         totalFetched += result.jobs.length;
       }
 

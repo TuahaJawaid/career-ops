@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import "./globals.css";
 
@@ -37,17 +36,16 @@ export default function RootLayout({
       <body className="h-full">
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
-          enableSystem
+          defaultTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <div className="flex h-full gradient-bg min-h-screen">
-              <Sidebar />
-              <div className="flex flex-1 flex-col overflow-hidden">
-                <Header />
-                <main className="flex-1 overflow-auto p-6">{children}</main>
-              </div>
+            <div className="flex h-full min-h-screen flex-col gradient-bg">
+              <Header />
+              <main className="flex-1 overflow-auto py-6">
+                <div className="page-container">{children}</div>
+              </main>
             </div>
             <Toaster />
           </TooltipProvider>

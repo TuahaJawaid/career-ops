@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { X, Plus, Save } from "lucide-react";
 import { toast } from "sonner";
 import { getProfile, upsertProfile } from "@/lib/actions/settings";
@@ -66,6 +65,16 @@ export default function SettingsPage() {
       });
       toast.success("Profile saved");
     });
+  }
+
+  function handleResetTargeting() {
+    setTargetRoles([
+      "Senior Accountant",
+      "Senior Revenue Accountant",
+      "Revenue Accountant",
+    ]);
+    setTargetRegions([]);
+    toast.success("Target roles and regions reset");
   }
 
   function addRole() {
@@ -167,6 +176,57 @@ export default function SettingsPage() {
             />
             <Button size="icon" variant="outline" onClick={addRegion}>
               <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Privacy & Data</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="rounded-lg border border-border p-3">
+            <p className="text-sm font-medium">Export profile snapshot</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Export your settings/profile as JSON for backups.
+            </p>
+            <Button
+              variant="outline"
+              className="mt-3"
+              onClick={() => {
+                const payload = {
+                  fullName,
+                  email,
+                  phone,
+                  location,
+                  targetRoles,
+                  targetRegions,
+                };
+                const blob = new Blob([JSON.stringify(payload, null, 2)], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = "career-ops-settings.json";
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                URL.revokeObjectURL(url);
+                toast.success("Settings exported");
+              }}
+            >
+              Export JSON
+            </Button>
+          </div>
+          <div className="rounded-lg border border-border p-3">
+            <p className="text-sm font-medium">Reset preferences</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Resets target roles and target regions to sensible defaults.
+            </p>
+            <Button variant="outline" className="mt-3" onClick={handleResetTargeting}>
+              Reset Targeting
             </Button>
           </div>
         </CardContent>

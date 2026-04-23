@@ -4,8 +4,11 @@ import { getDb } from "@/lib/db";
 import { discoveredJobs, jobs, companyCareerPages, resumes, aiGenerations } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { isUsLocation } from "@/lib/us-filter";
+import { isExcludedLocation, isUsLocation } from "@/lib/us-filter";
 import { assertMutationRequestAllowed } from "@/lib/action-auth";
+import { jobMatchesQuery } from "@/lib/services/search-match";
+import { evaluateJobAgainstSubscriptions } from "@/lib/actions/subscriptions";
+import { evaluateJobAgainstFollowedCompanies } from "@/lib/actions/follows";
 
 export async function getDiscoveredJobs() {
   const db = getDb();
@@ -15,7 +18,7 @@ export async function getDiscoveredJobs() {
     .where(eq(discoveredJobs.isSaved, false))
     .orderBy(desc(discoveredJobs.discoveredAt));
   // Filter out any US-based jobs that slipped through
-  return allJobs.filter((j) => !isUsLocation(j.location));
+  return allJobs.filter((j) => !isExcludedLocation(j.location));
 }
 
 export async function saveDiscoveredJob(discoveredJobId: string) {
@@ -78,6 +81,24 @@ export async function insertDiscoveredJobs(
   }[]
 ) {
   await assertMutationRequestAllowed();
+  return insertDiscoveredJobsFromSystem(jobsData);
+}
+
+// For trusted server contexts (API routes / cron) that already enforce auth.
+export async function insertDiscoveredJobsFromSystem(
+  jobsData: {
+    externalId?: string;
+    title: string;
+    company?: string;
+    location?: string;
+    locationType?: "remote" | "hybrid" | "onsite";
+    url?: string;
+    description?: string;
+    salary?: string;
+    source?: string;
+    postedDate?: string;
+  }[]
+) {
   if (jobsData.length === 0) return;
   const db = getDb();
 
@@ -94,11 +115,62 @@ export async function insertDiscoveredJobs(
 
   const newJobs = jobsData
     .filter((j) => !j.url || !existingUrls.has(j.url))
-    .filter((j) => !isUsLocation(j.location)); // Never insert US jobs
+    .filter((j) => !isExcludedLocation(j.location)); // Never insert excluded locations
   if (newJobs.length === 0) return;
 
-  await db.insert(discoveredJobs).values(newJobs);
+  const inserted = await db.insert(discoveredJobs).values(newJobs).returning();
+  for (const job of inserted) {
+    await evaluateJobAgainstSubscriptions({
+      id: job.id,
+      title: job.title,
+      description: job.description,
+      source: job.source,
+      location: job.location,
+      locationType: job.locationType,
+    });
+    await evaluateJobAgainstFollowedCompanies({
+      id: job.id,
+      title: job.title,
+      company: job.company,
+    });
+  }
   revalidatePath("/discover");
+}
+
+// For trusted server contexts (API routes / cron) to keep Discover list focused.
+export async function pruneDiscoveredJobsByQueriesFromSystem(queries: string[]) {
+  const activeQueries = queries.map((q) => q.trim()).filter(Boolean);
+  const db = getDb();
+  const current = await db
+    .select()
+    .from(discoveredJobs)
+    .where(eq(discoveredJobs.isSaved, false));
+
+  if (current.length === 0) return { removed: 0 };
+
+  let removed = 0;
+  for (const job of current) {
+    const excluded = isExcludedLocation(job.location);
+    const matches = activeQueries.some((query) =>
+      jobMatchesQuery({
+        query,
+        title: job.title,
+        description: job.description ?? undefined,
+        tags: [job.source ?? "", job.locationType ?? ""],
+      })
+    );
+
+    if (excluded || !matches) {
+      await db.delete(discoveredJobs).where(eq(discoveredJobs.id, job.id));
+      removed += 1;
+    }
+  }
+
+  if (removed > 0) {
+    revalidatePath("/discover");
+  }
+
+  return { removed };
 }
 
 // Purge all US-based jobs from discovered_jobs and jobs tables

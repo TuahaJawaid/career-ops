@@ -11,7 +11,7 @@ import {
   Compass,
   Sparkles,
   Users,
-  BarChart3,
+  HandCoins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +22,7 @@ const navItems = [
   { href: "/applications", label: "Applications", icon: Send },
   { href: "/resumes", label: "Resumes", icon: FileText },
   { href: "/contacts", label: "Contacts", icon: Users },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/offers", label: "Offers", icon: HandCoins },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -30,18 +30,18 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex w-64 flex-col glass-subtle border-r border-white/20">
-      <div className="flex h-16 items-center px-6 gap-3">
-        <div className="h-9 w-9 rounded-xl gradient-blue flex items-center justify-center shadow-card">
-          <Sparkles className="h-5 w-5 text-white" />
+    <aside className="hidden w-64 shrink-0 border-r border-sidebar-border/80 bg-sidebar/95 md:flex md:flex-col">
+      <div className="flex h-16 items-center gap-3 border-b border-sidebar-border/80 px-5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl neon-chip">
+          <Sparkles className="h-[18px] w-[18px] text-primary" />
         </div>
         <Link href="/dashboard">
-          <span className="font-bold text-lg bg-gradient-to-r from-[#4F7DF3] to-[#6C63FF] bg-clip-text text-transparent">
+          <span className="text-base font-semibold tracking-tight text-foreground">
             Career Ops
           </span>
         </Link>
       </div>
-      <nav className="flex-1 space-y-1 px-3 mt-2">
+      <nav className="mt-4 flex-1 space-y-1 px-3">
         {navItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
@@ -50,10 +50,10 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
+                "flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm transition-colors",
                 isActive
-                  ? "gradient-blue text-white shadow-card font-medium"
-                  : "text-muted-foreground hover:bg-white/50 hover:text-foreground"
+                  ? "border border-sidebar-border/90 bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                  : "text-muted-foreground hover:border-border/80 hover:bg-muted/50 hover:text-foreground"
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -62,12 +62,12 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="p-4 mx-3 mb-3 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-100">
-        <p className="text-xs font-medium text-blue-700">
-          Built for ATJ
+      <div className="mx-3 mb-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/50 p-4">
+        <p className="text-xs font-semibold text-foreground">
+          Command Deck
         </p>
-        <p className="text-[10px] text-blue-500 mt-0.5">
-          With love from TJ
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Track pipeline health, high-priority actions, and global opportunities.
         </p>
       </div>
     </aside>

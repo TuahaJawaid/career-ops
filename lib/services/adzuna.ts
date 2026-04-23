@@ -27,7 +27,7 @@ interface AdzunaResponse {
   mean: number;
 }
 
-const ADZUNA_COUNTRIES = ["gb", "ca", "au", "de", "fr", "in", "nl", "sg"] as const;
+export const ADZUNA_COUNTRIES = ["gb", "ca", "au", "de", "fr", "in", "nl", "sg"] as const;
 type AdzunaCountry = (typeof ADZUNA_COUNTRIES)[number];
 
 export function isAdzunaConfigured(): boolean {
