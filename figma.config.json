@@ -1,0 +1,15 @@
+{
+  "codeConnect": {
+    "parser": "react",
+    "label": "Career Ops",
+    "language": "tsx",
+    "include": ["**/*.figma.tsx", "**/*.figma.ts"],
+    "exclude": ["node_modules/**", ".next/**", "dist/**"],
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "importPaths": {
+      "components/*": "@/components"
+    }
+  }
+}
