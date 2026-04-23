@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useTransition } from "react";
+import { useEffect, useState, useMemo, useTransition, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,7 +105,7 @@ const SORT_OPTIONS = [
   { value: "company", label: "Company A-Z" },
 ];
 
-export default function DiscoverPage() {
+function DiscoverPageContent() {
   const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<DiscoveredJob[]>([]);
   const [careerPages, setCareerPages] = useState<CareerPage[]>([]);
@@ -952,3 +952,14 @@ export default function DiscoverPage() {
   );
 }
 
+export default function DiscoverPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="text-sm text-muted-foreground">Loading discover jobs...</div>
+      }
+    >
+      <DiscoverPageContent />
+    </Suspense>
+  );
+}
